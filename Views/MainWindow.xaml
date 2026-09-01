@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Cad2Bim.Views.Controls"
         xmlns:rendering="clr-namespace:Cad2Bim.Views.Rendering"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         Title="Cad2Bim Debug Viewer" Width="1100" Height="700"
         Background="{StaticResource WindowBrush}">
     <DockPanel>
@@ -10,7 +11,8 @@
         <!-- Top bar: file commands on the left, ribbon tools on the right -->
         <Border DockPanel.Dock="Top" Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="0,0,0,1" Padding="8,4">
-            <DockPanel>
+            <!-- LastChildFill off: every tool docks to an edge, nothing claims the gap. -->
+            <DockPanel LastChildFill="False">
                 <Button Command="{Binding OpenFileCommand}"
                         Style="{StaticResource RibbonButton}"
                         Content="{StaticResource IconFile}"
@@ -40,12 +42,16 @@
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <TextBlock Text="Units:" Foreground="{StaticResource TextDimBrush}"
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <RadioButton Content="mm" GroupName="ThicknessUnit"
-                                 IsChecked="{Binding Settings.IsMillimeters}"
-                                 VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <RadioButton Content="inch" GroupName="ThicknessUnit"
-                                 IsChecked="{Binding Settings.IsInches}"
-                                 VerticalAlignment="Center"/>
+                    <controls:SegmentedSelector SelectedIndex="{Binding Settings.UnitIndex}"
+                                                SegmentWidth="46"
+                                                VerticalAlignment="Center">
+                        <controls:SegmentedSelector.ItemsSource>
+                            <x:Array Type="{x:Type sys:String}">
+                                <sys:String>mm</sys:String>
+                                <sys:String>inch</sys:String>
+                            </x:Array>
+                        </controls:SegmentedSelector.ItemsSource>
+                    </controls:SegmentedSelector>
                 </StackPanel>
 
                 <!-- Minimum/Maximum precede Value so the scrub range is already in the current

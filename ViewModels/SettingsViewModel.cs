@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using Cad2Bim.Classification;
 
 namespace Cad2Bim.ViewModels {
@@ -104,6 +104,7 @@ namespace Cad2Bim.ViewModels {
                 OnPropertyChanged(nameof(UnitSuffix));
                 OnPropertyChanged(nameof(SMinLabel));
                 OnPropertyChanged(nameof(SMaxLabel));
+                OnPropertyChanged(nameof(UnitIndex));
                 OnPropertyChanged(nameof(IsMillimeters));
                 OnPropertyChanged(nameof(IsInches));
                 OnPropertyChanged(nameof(MinOpeningWidth));
@@ -113,6 +114,12 @@ namespace Cad2Bim.ViewModels {
                 OnPropertyChanged(nameof(OpeningMaximum));
                 OnPropertyChanged(nameof(OpeningStep));
             }
+        }
+
+        /// <summary>Segmented-picker facade: 0 = millimetres, 1 = inches.</summary>
+        public int UnitIndex {
+            get => _unit == ThicknessUnit.Inches ? 1 : 0;
+            set => Unit = value == 1 ? ThicknessUnit.Inches : ThicknessUnit.Millimeters;
         }
 
         // Radio-button facades: only the incoming true matters, the other button clears itself.

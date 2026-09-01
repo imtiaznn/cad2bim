@@ -23,10 +23,21 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="2"
-                            Padding="8,4">
+                            CornerRadius="2">
                         <Grid>
-                            <DockPanel x:Name="PART_Display" Background="Transparent">
+                            <!-- Progress fill: scaled from the left by Value's position in its
+                                 range, so it costs a transform rather than a layout pass. -->
+                            <Border x:Name="Fill"
+                                    Background="{StaticResource ScrubFillBrush}"
+                                    HorizontalAlignment="Stretch"
+                                    CornerRadius="1"
+                                    RenderTransformOrigin="0,0">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleX="{Binding FillFraction, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                </Border.RenderTransform>
+                            </Border>
+
+                            <DockPanel x:Name="PART_Display" Background="Transparent" Margin="8,4">
                                 <TextBlock DockPanel.Dock="Left"
                                            Text="{TemplateBinding Label}"
                                            Foreground="{StaticResource TextLabelBrush}"/>
@@ -37,6 +48,7 @@
                             </DockPanel>
                             <TextBox x:Name="PART_Editor"
                                      Visibility="Collapsed"
+                                     Margin="8,4"
                                      HorizontalAlignment="Stretch"
                                      VerticalContentAlignment="Center"
                                      Background="{StaticResource EditorBrush}"

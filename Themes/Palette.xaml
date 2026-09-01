@@ -1,4 +1,4 @@
-<!-- Single source of truth for the Autodesk-style dark palette.
+﻿<!-- Single source of truth for the Autodesk-style dark palette.
      Every other dictionary and view pulls its colours from here. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -25,6 +25,12 @@
     <SolidColorBrush x:Key="ControlBorderBrush" Color="#FF525252"/>
     <SolidColorBrush x:Key="ControlHoverBrush" Color="#FF474747"/>
     <SolidColorBrush x:Key="ControlPressedBrush" Color="#FF2F2F2F"/>
+
+    <!-- Segmented picker: the thumb that slides onto the selected option. -->
+    <SolidColorBrush x:Key="SegmentSelectedBrush" Color="#FF5C5C5C"/>
+
+    <!-- Scrub field progress fill: the accent, dropped to a tint so the value stays readable. -->
+    <SolidColorBrush x:Key="ScrubFillBrush" Color="#0696D7" Opacity="0.38"/>
 
     <!-- Checkbox: light-grey outline, hollow fill, white glyph -->
     <SolidColorBrush x:Key="CheckBoxOutlineBrush" Color="#FF9A9A9A"/>

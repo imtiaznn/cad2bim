@@ -1,0 +1,73 @@
+<UserControl x:Class="Cad2Bim.Views.Controls.SegmentedSelector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root"
+             HorizontalAlignment="Left">
+    <!-- Track: the sunken box every segment sits inside. -->
+    <Border Background="{StaticResource EditorBrush}"
+            BorderBrush="{StaticResource ControlBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="3"
+            Padding="2"
+            SnapsToDevicePixels="True">
+        <Grid>
+            <!-- Thumb: slides under the selection instead of each segment lighting up. -->
+            <Border x:Name="PART_Thumb"
+                    Width="{Binding SegmentWidth, ElementName=Root}"
+                    HorizontalAlignment="Left"
+                    Background="{StaticResource SegmentSelectedBrush}"
+                    CornerRadius="2">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="PART_ThumbOffset"/>
+                </Border.RenderTransform>
+            </Border>
+
+            <!-- ListBox for the selection bookkeeping only; every piece of its own
+                 chrome is templated away so the thumb above is what the eye sees. -->
+            <ListBox x:Name="PART_List"
+                     ItemsSource="{Binding ItemsSource, ElementName=Root}"
+                     SelectedIndex="{Binding SelectedIndex, ElementName=Root, Mode=TwoWay}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Padding="0"
+                     Focusable="False"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Width" Value="{Binding SegmentWidth, ElementName=Root}"/>
+                        <Setter Property="Foreground" Value="{StaticResource TextDimBrush}"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border Background="Transparent" Padding="0,3">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          TextElement.Foreground="{TemplateBinding Foreground}"
+                                                          TextElement.FontSize="{TemplateBinding FontSize}"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource TextStrongBrush}"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+        </Grid>
+    </Border>
+</UserControl>
