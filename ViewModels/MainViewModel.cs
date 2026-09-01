@@ -12,6 +12,14 @@ namespace Cad2Bim.ViewModels {
         private readonly LayerViewModel _rawLayer = new("CAD Drawing (raw)");
         private readonly LayerViewModel _wallsLayer = new("Classified Walls", highlightIndex: 0);
 
+        // Doors purple and windows green follow the paper's own legend (Fig. 7). The third layer
+        // is the honest one: a hole in a wall that is neither drawn as glazing nor swung as a
+        // door. Giving those their own colour means a miss shows up as a miss instead of being
+        // quietly filed as a window.
+        private readonly LayerViewModel _doorsLayer = new("Doors", highlightIndex: 2);
+        private readonly LayerViewModel _windowsLayer = new("Windows", highlightIndex: 3);
+        private readonly LayerViewModel _openingsLayer = new("Unclassified openings", highlightIndex: 1);
+
         public ObservableCollection<LayerViewModel> Layers { get; }
         public SettingsViewModel Settings { get; }
         public ICommand OpenFileCommand { get; }
@@ -29,7 +37,9 @@ namespace Cad2Bim.ViewModels {
             Settings = new SettingsViewModel(Wall.DefaultSMinMillimeters, Wall.DefaultSMaxMillimeters);
             Settings.Changed += Reclassify;
 
-            Layers = new ObservableCollection<LayerViewModel> { _rawLayer, _wallsLayer };
+            Layers = new ObservableCollection<LayerViewModel> {
+                _rawLayer, _wallsLayer, _openingsLayer, _windowsLayer, _doorsLayer
+            };
 
             OpenFileCommand = new RelayCommand(() => {
                 var path = _pickFile();
@@ -68,27 +78,43 @@ namespace Cad2Bim.ViewModels {
         private void Reclassify() {
             if (!_service.HasData) return;
 
-            List<Wall> walls;
+            ClassificationResult result;
             try {
-                walls = _service.Classify(Settings.SMinMillimeters, Settings.SMaxMillimeters);
+                result = _service.ClassifyAll(Settings.SMinMillimeters, Settings.SMaxMillimeters,
+                                              Settings.Tolerances);
             }
             catch (Exception ex) {
                 StatusText = $"Classification failed: {ex.Message}";
                 return;
             }
 
-            _wallsLayer.Items = walls.Select(w => {
+            _wallsLayer.Items = result.Walls.Select(w => {
                 var edges = w.Geometry.OfType<Segment>().ToList();
                 return (object)new WallShape(ToShape(edges[0]), ToShape(edges[1]));
             }).ToList();
 
+            _doorsLayer.Items = ToShapes(result.Openings, OpeningKind.Door);
+            _windowsLayer.Items = ToShapes(result.Openings, OpeningKind.Window);
+            _openingsLayer.Items = ToShapes(result.Openings, OpeningKind.Unknown);
+
             string unit = Settings.UnitSuffix;
-            StatusText = $"{_rawLayer.Items.Count} drawn, {_service.SegmentCount} segments, {walls.Count} walls  "
+            StatusText = $"{_rawLayer.Items.Count} drawn, {_service.SegmentCount} segments, {result.Walls.Count} walls, "
+                       + $"{_doorsLayer.Items.Count} doors, {_windowsLayer.Items.Count} windows, "
+                       + $"{_openingsLayer.Items.Count} unclassified  "
                        + $"(SMin={Settings.SMin:0.###} {unit}, SMax={Settings.SMax:0.###} {unit}, drawing units: {DrawingUnits.Name(_service.Units)})";
         }
 
         private static SegmentShape ToShape(Segment s) =>
             new(s.P1.x, s.P1.y, s.P2.x, s.P2.y);
+
+        private static List<object> ToShapes(IReadOnlyList<Opening> openings, OpeningKind kind) =>
+            openings.Where(o => o.Kind == kind).Select(o => (object)new OpeningShape(
+                o.Rectangle.Select(p => (p.x, p.y)).ToList(),
+                ToShape(new Segment(o.Wall.FromAxis(o.AxisSpan.Start), o.Wall.FromAxis(o.AxisSpan.End))),
+                o.SwingArc is null ? null
+                    : new ArcShape(o.SwingArc.Center.x, o.SwingArc.Center.y, o.SwingArc.Radius,
+                                   o.SwingArc.StartAngle, o.SwingArc.EndAngle),
+                o.Leaf is null ? null : ToShape(o.Leaf))).ToList();
 
         // Extents of the drawn geometry, so a fit-to-extents shows exactly what is rendered.
         private static Rect ComputeBounds(IReadOnlyList<object> shapes) {

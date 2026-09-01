@@ -279,13 +279,70 @@ namespace Cad2Bim.Views.Rendering {
                     dc.DrawLine(pen, new Point(s.X1, s.Y1), new Point(s.X2, s.Y2));
                     break;
                 case ArcShape a:
-                    dc.DrawEllipse(null, pen, new Point(a.Cx, a.Cy), a.Radius, a.Radius);
+                    DrawArc(dc, pen, a);
                     break;
                 case WallShape w:
                     dc.DrawLine(pen, new Point(w.A.X1, w.A.Y1), new Point(w.A.X2, w.A.Y2));
                     dc.DrawLine(pen, new Point(w.B.X1, w.B.Y1), new Point(w.B.X2, w.B.Y2));
                     break;
+                case OpeningShape o:
+                    DrawClosed(dc, pen, o.Rectangle);
+                    dc.DrawLine(pen, new Point(o.Threshold.X1, o.Threshold.Y1),
+                                     new Point(o.Threshold.X2, o.Threshold.Y2));
+                    if (o.Leaf is SegmentShape leaf) {
+                        dc.DrawLine(pen, new Point(leaf.X1, leaf.Y1), new Point(leaf.X2, leaf.Y2));
+                    }
+                    if (o.Swing is ArcShape swing) {
+                        DrawArc(dc, pen, swing);
+                    }
+                    break;
             }
+        }
+
+        private static void DrawClosed(DrawingContext dc, Pen pen, IReadOnlyList<(double X, double Y)> points) {
+            if (points.Count < 2) {
+                return;
+            }
+
+            StreamGeometry geometry = new();
+            using (StreamGeometryContext ctx = geometry.Open()) {
+                ctx.BeginFigure(new Point(points[0].X, points[0].Y), false, true);
+                ctx.PolyLineTo(points.Skip(1).Select(p => new Point(p.X, p.Y)).ToList(), true, false);
+            }
+
+            geometry.Freeze();
+            dc.DrawGeometry(null, pen, geometry);
+        }
+
+        private static void DrawArc(DrawingContext dc, Pen pen, ArcShape arc) {
+            double sweep = arc.EndAngle - arc.StartAngle;
+            while (sweep <= 0) {
+                sweep += 2 * Math.PI;
+            }
+
+            Point At(double angle) =>
+                new(arc.Cx + (arc.Radius * Math.Cos(angle)), arc.Cy + (arc.Radius * Math.Sin(angle)));
+
+            // A closed sweep has no distinct endpoints for ArcTo to run between.
+            if (sweep >= (2 * Math.PI) - 1e-9) {
+                dc.DrawEllipse(null, pen, new Point(arc.Cx, arc.Cy), arc.Radius, arc.Radius);
+                return;
+            }
+
+            StreamGeometry geometry = new();
+            using (StreamGeometryContext ctx = geometry.Open()) {
+                ctx.BeginFigure(At(arc.StartAngle), false, false);
+                // Model angles run counter-clockwise about a Y-up CAD axis, but WPF resolves a
+                // sweep direction in its own Y-down convention. These points are authored in CAD
+                // space, so the handedness is opposite and a CAD counter-clockwise arc has to be
+                // asked for as Clockwise - naming it the other way picks the mirror arc, which
+                // draws the door swinging the wrong way.
+                ctx.ArcTo(At(arc.StartAngle + sweep), new Size(arc.Radius, arc.Radius),
+                          0, sweep > Math.PI, SweepDirection.Clockwise, true, false);
+            }
+
+            geometry.Freeze();
+            dc.DrawGeometry(null, pen, geometry);
         }
 
         private static Color WithAlpha(Color color) => Color.FromArgb(HighlightAlpha, color.R, color.G, color.B);

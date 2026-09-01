@@ -1,0 +1,36 @@
+<!-- Ribbon icon placeholders, drawn on a 24x24 grid.
+     x:Shared="False" hands out a fresh visual per lookup, so one key can sit in
+     several buttons. Swap a Viewbox body for a real glyph without touching the views. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Viewbox x:Key="IconLayers" x:Shared="False" Width="22" Height="22">
+        <Canvas Width="24" Height="24">
+            <Path Data="M12,3 L22,8.5 L12,14 L2,8.5 Z"
+                  Stroke="{StaticResource TextBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round" Fill="Transparent"/>
+            <Path Data="M4,12 L12,16.4 L20,12"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+            <Path Data="M4,15.6 L12,20 L20,15.6"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+        </Canvas>
+    </Viewbox>
+
+    <!-- Sheet with a folded corner. -->
+    <Viewbox x:Key="IconFile" x:Shared="False" Width="22" Height="22">
+        <Canvas Width="24" Height="24">
+            <Path Data="M6,2.5 L14.5,2.5 L19,7 L19,21.5 L6,21.5 Z"
+                  Stroke="{StaticResource TextBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round" Fill="Transparent"/>
+            <Path Data="M14.5,2.5 L14.5,7 L19,7"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+            <Path Data="M9,12 L16,12 M9,15.5 L16,15.5 M9,19 L13,19"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+        </Canvas>
+    </Viewbox>
+
+</ResourceDictionary>

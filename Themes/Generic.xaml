@@ -2,10 +2,16 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:Cad2Bim.Views.Controls">
 
+    <!-- Theme dictionaries are resolved before Application.Resources, so the palette is
+         merged here too rather than relied on from the app scope. -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/Palette.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <!-- Autodesk-style dark scrub field -->
     <Style TargetType="{x:Type controls:NumericScrubBox}">
-        <Setter Property="Background" Value="#FF3B3B3B"/>
-        <Setter Property="BorderBrush" Value="#FF525252"/>
+        <Setter Property="Background" Value="{StaticResource ControlBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Cursor" Value="SizeWE"/>
         <Setter Property="Focusable" Value="True"/>
@@ -23,26 +29,26 @@
                             <DockPanel x:Name="PART_Display" Background="Transparent">
                                 <TextBlock DockPanel.Dock="Left"
                                            Text="{TemplateBinding Label}"
-                                           Foreground="#FFB0B0B0"/>
+                                           Foreground="{StaticResource TextLabelBrush}"/>
                                 <TextBlock x:Name="PART_ValueText"
                                            HorizontalAlignment="Right"
                                            FontWeight="SemiBold"
-                                           Foreground="#FFE8E8E8"/>
+                                           Foreground="{StaticResource TextStrongBrush}"/>
                             </DockPanel>
                             <TextBox x:Name="PART_Editor"
                                      Visibility="Collapsed"
                                      HorizontalAlignment="Stretch"
                                      VerticalContentAlignment="Center"
-                                     Background="#FF2A2A2A"
-                                     Foreground="#FFE8E8E8"
-                                     CaretBrush="#FFE8E8E8"
-                                     SelectionBrush="#FF0696D7"
+                                     Background="{StaticResource EditorBrush}"
+                                     Foreground="{StaticResource TextStrongBrush}"
+                                     CaretBrush="{StaticResource TextStrongBrush}"
+                                     SelectionBrush="{StaticResource AccentBrush}"
                                      BorderThickness="0"/>
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#FF0696D7"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

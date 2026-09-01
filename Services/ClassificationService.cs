@@ -1,6 +1,10 @@
 using ACadSharp.Types.Units;
+using Cad2Bim.Classification;
 
 namespace Cad2Bim.Services {
+    /// <summary>Walls and the openings found in them.</summary>
+    public sealed record ClassificationResult(IReadOnlyList<Wall> Walls, IReadOnlyList<Opening> Openings);
+
     // Sole bridge between ViewModels and the Model layer.
     public class ClassificationService {
         private List<GeometryElement> _geometry = new();
@@ -35,6 +39,26 @@ namespace Cad2Bim.Services {
             Wall.SMin = sMinMillimeters / MillimetersPerUnit;
             Wall.SMax = sMaxMillimeters / MillimetersPerUnit;
             return CadClassifier.ClassifyWalls(_segments);
+        }
+
+        /// <summary>
+        /// Walls and the openings in them. Tolerances arrive in millimetres and are converted here,
+        /// the one place that knows the drawing's scale, so nothing downstream ever sees a raw
+        /// drawing unit.
+        /// </summary>
+        public ClassificationResult ClassifyAll(double sMinMillimeters, double sMaxMillimeters,
+                                                ClassificationTolerances? toleranceMillimeters = null,
+                                                ClassificationReport? report = null) {
+            List<Wall> walls = Classify(sMinMillimeters, sMaxMillimeters);
+
+            ClassificationTolerances tolerances =
+                (toleranceMillimeters ?? ClassificationTolerances.DefaultMillimeters)
+                    .ToDrawingUnits(MillimetersPerUnit);
+
+            if (report is not null) report.MillimetersPerUnit = MillimetersPerUnit;
+
+            List<Opening> openings = OpeningClassifier.Classify(walls, _geometry, tolerances, report);
+            return new ClassificationResult(walls, openings);
         }
     }
 }

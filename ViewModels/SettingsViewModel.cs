@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Cad2Bim.Classification;
 
 namespace Cad2Bim.ViewModels {
     /// <summary>Unit the thickness fields are typed and scrubbed in. Storage stays millimetres.</summary>
@@ -42,6 +43,51 @@ namespace Cad2Bim.ViewModels {
             set { if (SetField(ref _sMaxMm, ToMm(value))) RaiseIfValid(); }
         }
 
+        // --- Opening tolerances ----------------------------------------------------------------
+        // The four highest-leverage knobs, defaulted from ClassificationTolerances so there is one
+        // source of truth for the numbers. The rest stay at their defaults: a panel of a dozen
+        // fields is harder to use than one with four, and these are the ones that move the result.
+        //
+        // The width floor earns its place - most spurious openings are columns and short jogs, and
+        // they cluster below it. So does the swing radius floor: a swivel chair is drawn as the
+        // same quarter circle as a door, only smaller.
+        private double _minOpeningMm = ClassificationTolerances.DefaultMillimeters.MinOpeningWidth;
+        private double _maxOpeningMm = ClassificationTolerances.DefaultMillimeters.MaxOpeningWidth;
+        private double _minSwingMm = ClassificationTolerances.DefaultMillimeters.MinSwingRadius;
+        private double _maxSwingMm = ClassificationTolerances.DefaultMillimeters.MaxSwingRadius;
+
+        public double MinOpeningWidth {
+            get => FromMm(_minOpeningMm);
+            set { if (SetField(ref _minOpeningMm, ToMm(value))) RaiseIfValid(); }
+        }
+
+        public double MaxOpeningWidth {
+            get => FromMm(_maxOpeningMm);
+            set { if (SetField(ref _maxOpeningMm, ToMm(value))) RaiseIfValid(); }
+        }
+
+        public double MinSwingRadius {
+            get => FromMm(_minSwingMm);
+            set { if (SetField(ref _minSwingMm, ToMm(value))) RaiseIfValid(); }
+        }
+
+        public double MaxSwingRadius {
+            get => FromMm(_maxSwingMm);
+            set { if (SetField(ref _maxSwingMm, ToMm(value))) RaiseIfValid(); }
+        }
+
+        /// <summary>The tolerance set to classify with, still in millimetres.</summary>
+        public ClassificationTolerances Tolerances => ClassificationTolerances.DefaultMillimeters with {
+            MinOpeningWidth = _minOpeningMm,
+            MaxOpeningWidth = _maxOpeningMm,
+            MinSwingRadius = _minSwingMm,
+            MaxSwingRadius = _maxSwingMm
+        };
+
+        /// <summary>Scrub range for the opening fields, which run far wider than a wall's thickness.</summary>
+        public double OpeningMaximum => FromMm(6000);
+        public double OpeningStep => _unit == ThicknessUnit.Inches ? 0.05 : 2.0;
+
         public ThicknessUnit Unit {
             get => _unit;
             set {
@@ -60,6 +106,12 @@ namespace Cad2Bim.ViewModels {
                 OnPropertyChanged(nameof(SMaxLabel));
                 OnPropertyChanged(nameof(IsMillimeters));
                 OnPropertyChanged(nameof(IsInches));
+                OnPropertyChanged(nameof(MinOpeningWidth));
+                OnPropertyChanged(nameof(MaxOpeningWidth));
+                OnPropertyChanged(nameof(MinSwingRadius));
+                OnPropertyChanged(nameof(MaxSwingRadius));
+                OnPropertyChanged(nameof(OpeningMaximum));
+                OnPropertyChanged(nameof(OpeningStep));
             }
         }
 
@@ -89,7 +141,9 @@ namespace Cad2Bim.ViewModels {
         private double ToMm(double value) => _unit == ThicknessUnit.Inches ? value * MillimetersPerInch : value;
         private double FromMm(double mm) => _unit == ThicknessUnit.Inches ? mm / MillimetersPerInch : mm;
 
-        private bool IsValid => _sMinMm > 0 && _sMinMm < _sMaxMm;
+        private bool IsValid => _sMinMm > 0 && _sMinMm < _sMaxMm
+                             && _minOpeningMm > 0 && _minOpeningMm < _maxOpeningMm
+                             && _minSwingMm > 0 && _minSwingMm < _maxSwingMm;
 
         private void RaiseIfValid() {
             if (IsValid) Changed?.Invoke();
