@@ -1,0 +1,132 @@
+{
+  "version": 4,
+  "targets": {
+    "net8.0-windows": {
+      "ACadSharp/3.6.51": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/ACadSharp.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/ACadSharp.dll": {
+            "related": ".xml"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ACadSharp/3.6.51": {
+      "sha512": "HUAK44Drrws5WADpRQucwb2p+BfmgimKNbs2+PUAla+N0PtKgTWiN+FQs7GK4wG1asEjw3tH/iJ+GxAPGMy+vw==",
+      "type": "package",
+      "path": "acadsharp/3.6.51",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "acadsharp.3.6.51.nupkg.sha512",
+        "acadsharp.nuspec",
+        "lib/net10.0/ACadSharp.dll",
+        "lib/net10.0/ACadSharp.xml",
+        "lib/net48/ACadSharp.dll",
+        "lib/net48/ACadSharp.xml",
+        "lib/net5.0/ACadSharp.dll",
+        "lib/net5.0/ACadSharp.xml",
+        "lib/net6.0/ACadSharp.dll",
+        "lib/net6.0/ACadSharp.xml",
+        "lib/net7.0/ACadSharp.dll",
+        "lib/net7.0/ACadSharp.xml",
+        "lib/net8.0/ACadSharp.dll",
+        "lib/net8.0/ACadSharp.xml",
+        "lib/net9.0/ACadSharp.dll",
+        "lib/net9.0/ACadSharp.xml",
+        "lib/netstandard2.0/ACadSharp.dll",
+        "lib/netstandard2.0/ACadSharp.xml",
+        "lib/netstandard2.1/ACadSharp.dll",
+        "lib/netstandard2.1/ACadSharp.xml"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0-windows": [
+      "ACadSharp >= 3.6.51"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\imtya\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\imtya\\OneDrive\\Desktop\\bina-cloudtech\\c2b\\cad2bim-2\\cad2bim.csproj",
+      "projectName": "cad2bim",
+      "projectPath": "C:\\Users\\imtya\\OneDrive\\Desktop\\bina-cloudtech\\c2b\\cad2bim-2\\cad2bim.csproj",
+      "packagesPath": "C:\\Users\\imtya\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\imtya\\OneDrive\\Desktop\\bina-cloudtech\\c2b\\cad2bim-2\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\imtya\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0-windows"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0-windows": {
+          "framework": "net8.0-windows7.0",
+          "targetAlias": "net8.0-windows",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "10.0.300"
+    },
+    "frameworks": {
+      "net8.0-windows": {
+        "framework": "net8.0-windows7.0",
+        "targetAlias": "net8.0-windows",
+        "dependencies": {
+          "ACadSharp": {
+            "target": "Package",
+            "version": "[3.6.51, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App.WPF": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.301/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

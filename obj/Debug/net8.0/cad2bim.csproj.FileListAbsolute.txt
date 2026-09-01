@@ -1,0 +1,17 @@
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.csproj.AssemblyReference.cache
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.AssemblyInfoInputs.cache
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.AssemblyInfo.cs
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.csproj.CoreCompileInputs.cache
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\bin\Debug\net8.0\cad2bim.exe
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\bin\Debug\net8.0\cad2bim.deps.json
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\bin\Debug\net8.0\cad2bim.runtimeconfig.json
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\bin\Debug\net8.0\cad2bim.dll
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\bin\Debug\net8.0\cad2bim.pdb
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\bin\Debug\net8.0\ACadSharp.dll
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.csproj.Up2Date
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.dll
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\refint\cad2bim.dll
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.pdb
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\cad2bim.genruntimeconfig.cache
+C:\Users\imtya\OneDrive\Desktop\bina-cloudtech\cad2bim-2\obj\Debug\net8.0\ref\cad2bim.dll
