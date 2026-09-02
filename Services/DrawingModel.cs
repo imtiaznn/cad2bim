@@ -100,8 +100,8 @@ namespace Cad2Bim.Services {
 
                 (changed ??= new List<int>()).Add(id);
                 _openScope?.Add((id, _classes[id]));
-                if (_openScope is null && source != ChangeSource.Undo) {
-                    // Unscoped call: its own undo entry.
+                if (_openScope is null && source is not (ChangeSource.Undo or ChangeSource.Load)) {
+                    // Unscoped call: its own undo entry. Restoring a save is not undoable.
                     PushUndo(new List<(int, PrimitiveClass)> { (id, _classes[id]) });
                 }
 

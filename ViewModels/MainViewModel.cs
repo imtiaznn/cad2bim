@@ -16,6 +16,7 @@ namespace Cad2Bim.ViewModels {
         public ManualToolViewModel ManualTool { get; } = new();
 
         public ICommand OpenFileCommand { get; }
+        public ICommand SaveCommand { get; }
         public ICommand ShowAutomaticPanelCommand { get; }
         public ICommand ShowManualPanelCommand { get; }
         public ICommand ClosePanelCommand { get; }
@@ -24,6 +25,8 @@ namespace Cad2Bim.ViewModels {
 
         private DrawingModel? _model;
         public DrawingModel? Model { get => _model; private set => SetField(ref _model, value); }
+
+        private string? _filePath;
 
         private SegmentPanel _activePanel = SegmentPanel.None;
         public SegmentPanel ActivePanel {
@@ -71,6 +74,8 @@ namespace Cad2Bim.ViewModels {
                 if (path is not null) LoadFile(path);
             });
 
+            SaveCommand = new RelayCommand(SaveSegmentation, () => Model is not null && _filePath is not null);
+
             ShowAutomaticPanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.Automatic);
             ShowManualPanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.Manual);
             ClosePanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.None);
@@ -101,11 +106,28 @@ namespace Cad2Bim.ViewModels {
             model.ClassificationChanged += OnClassificationChanged;
             Model = model;
             Bounds = model.Bounds;
+            _filePath = path;
 
             _service.Load(model.AnalyzableGeometry(), model.Units);
 
+            int restored = SegmentationStore.TryLoad(model, path);
             StatusText = $"{model.Primitives.Count} primitives, {_service.SegmentCount} segments "
-                       + $"(drawing units: {DrawingUnits.Name(_service.Units)}). Use Segment to classify.";
+                       + $"(drawing units: {DrawingUnits.Name(_service.Units)})"
+                       + (restored > 0
+                           ? $" — restored {restored} classified lines from {System.IO.Path.GetFileName(SegmentationStore.PathFor(path))}."
+                           : ". Use Segment to classify.");
+        }
+
+        private void SaveSegmentation() {
+            if (Model is null || _filePath is null) return;
+
+            try {
+                SegmentationStore.Save(Model, _filePath);
+                StatusText = $"Segmentation saved to {System.IO.Path.GetFileName(SegmentationStore.PathFor(_filePath))}.";
+            }
+            catch (Exception ex) {
+                StatusText = $"Save failed: {ex.Message}";
+            }
         }
 
         private void RunAutoSegmentation() {

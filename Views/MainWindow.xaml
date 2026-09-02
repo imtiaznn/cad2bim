@@ -17,12 +17,9 @@
                 BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="0,0,0,1" Padding="8,4">
             <!-- LastChildFill off: every tool docks to an edge, nothing claims the gap. -->
             <DockPanel LastChildFill="False">
-                <Button Command="{Binding OpenFileCommand}"
-                        Style="{StaticResource RibbonButton}"
-                        Content="{StaticResource IconFile}"
-                        Tag="Open"
-                        ToolTip="Open a DWG or DXF drawing"
-                        DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                <controls:FileButton DockPanel.Dock="Left" VerticalAlignment="Center"
+                                     OpenCommand="{Binding OpenFileCommand}"
+                                     SaveCommand="{Binding SaveCommand}"/>
                 <controls:SegmentButton DockPanel.Dock="Left" Margin="8,0,0,0" VerticalAlignment="Center"
                                         AutomaticCommand="{Binding ShowAutomaticPanelCommand}"
                                         ManualCommand="{Binding ShowManualPanelCommand}"/>

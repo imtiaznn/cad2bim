@@ -4,4 +4,5 @@ ErrorReports/
 *.pdf
 *.bak
 *.dwg
+*.json
 *_wpftmp.csproj

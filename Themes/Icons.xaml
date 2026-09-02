@@ -18,6 +18,21 @@
         </Canvas>
     </Viewbox>
 
+    <!-- Floppy disk: outer shell with clipped corner, shutter on top, label below. -->
+    <Viewbox x:Key="IconSave" x:Shared="False" Width="22" Height="22">
+        <Canvas Width="24" Height="24">
+            <Path Data="M3,3 L17,3 L21,7 L21,21 L3,21 Z"
+                  Stroke="{StaticResource TextBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round" Fill="Transparent"/>
+            <Path Data="M8,3 L8,9 L16,9 L16,3"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+            <Path Data="M7,21 L7,14 L17,14 L17,21"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+        </Canvas>
+    </Viewbox>
+
     <!-- Polyline with node handles: line work being picked into segments. -->
     <Viewbox x:Key="IconSegment" x:Shared="False" Width="22" Height="22">
         <Canvas Width="24" Height="24">
