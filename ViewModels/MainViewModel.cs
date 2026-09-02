@@ -2,27 +2,47 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using Cad2Bim.Services;
-using Cad2Bim.ViewModels.Shapes;
 
 namespace Cad2Bim.ViewModels {
+    /// <summary>Which right-docked panel is open. Top-level so XAML can reference it via x:Static.</summary>
+    public enum SegmentPanel { None, Automatic, Manual }
+
     public class MainViewModel : ViewModelBase {
         private readonly ClassificationService _service;
         private readonly Func<string?> _pickFile;
 
-        private readonly LayerViewModel _rawLayer = new("CAD Drawing (raw)");
-        private readonly LayerViewModel _wallsLayer = new("Classified Walls", highlightIndex: 0);
-
-        // Doors purple and windows green follow the paper's own legend (Fig. 7). The third layer
-        // is the honest one: a hole in a wall that is neither drawn as glazing nor swung as a
-        // door. Giving those their own colour means a miss shows up as a miss instead of being
-        // quietly filed as a window.
-        private readonly LayerViewModel _doorsLayer = new("Doors", highlightIndex: 2);
-        private readonly LayerViewModel _windowsLayer = new("Windows", highlightIndex: 3);
-        private readonly LayerViewModel _openingsLayer = new("Unclassified openings", highlightIndex: 1);
-
         public ObservableCollection<LayerViewModel> Layers { get; }
         public SettingsViewModel Settings { get; }
+        public ManualToolViewModel ManualTool { get; } = new();
+
         public ICommand OpenFileCommand { get; }
+        public ICommand ShowAutomaticPanelCommand { get; }
+        public ICommand ShowManualPanelCommand { get; }
+        public ICommand ClosePanelCommand { get; }
+        public ICommand SegmentCommand { get; }
+        public ICommand UndoCommand { get; }
+
+        private DrawingModel? _model;
+        public DrawingModel? Model { get => _model; private set => SetField(ref _model, value); }
+
+        private SegmentPanel _activePanel = SegmentPanel.None;
+        public SegmentPanel ActivePanel {
+            get => _activePanel;
+            set {
+                if (!SetField(ref _activePanel, value)) return;
+                // Never leave an invisible brush armed once its panel is gone.
+                if (value != SegmentPanel.Manual) ManualTool.ActiveTool = ManualToolKind.None;
+            }
+        }
+
+        private bool _segmentWalls = true;
+        public bool SegmentWalls { get => _segmentWalls; set => SetField(ref _segmentWalls, value); }
+
+        private bool _segmentDoors = true;
+        public bool SegmentDoors { get => _segmentDoors; set => SetField(ref _segmentDoors, value); }
+
+        private bool _segmentWindows = true;
+        public bool SegmentWindows { get => _segmentWindows; set => SetField(ref _segmentWindows, value); }
 
         private Rect _bounds = Rect.Empty;
         public Rect Bounds { get => _bounds; private set => SetField(ref _bounds, value); }
@@ -34,17 +54,32 @@ namespace Cad2Bim.ViewModels {
             _service = service;
             _pickFile = pickFile;
 
+            // Settings changes no longer trigger anything by themselves — classification runs
+            // only when the Automatic panel's Confirm button is pressed.
             Settings = new SettingsViewModel(Wall.DefaultSMinMillimeters, Wall.DefaultSMaxMillimeters);
-            Settings.Changed += Reclassify;
 
             Layers = new ObservableCollection<LayerViewModel> {
-                _rawLayer, _wallsLayer, _openingsLayer, _windowsLayer, _doorsLayer
+                new("CAD Drawing (raw)", PrimitiveClass.Unclassified),
+                new("Annotations", PrimitiveClass.Annotation),
+                new("Walls", PrimitiveClass.Wall),
+                new("Windows", PrimitiveClass.Window),
+                new("Doors", PrimitiveClass.Door),
             };
 
             OpenFileCommand = new RelayCommand(() => {
                 var path = _pickFile();
                 if (path is not null) LoadFile(path);
             });
+
+            ShowAutomaticPanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.Automatic);
+            ShowManualPanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.Manual);
+            ClosePanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.None);
+
+            SegmentCommand = new RelayCommand(
+                RunAutoSegmentation,
+                () => _service.HasData && (SegmentWalls || SegmentDoors || SegmentWindows));
+
+            UndoCommand = new RelayCommand(() => Model?.Undo(), () => Model?.CanUndo == true);
         }
 
         public void LoadFile(string path) {
@@ -57,26 +92,24 @@ namespace Cad2Bim.ViewModels {
                 return;
             }
 
-            // The base layer is the CAD file itself — every drawable entity, blocks exploded,
-            // curves tessellated. Geometry.cs/CadLoader feeds classification only, so what the
-            // classifier keeps stays comparable against the ground truth drawn underneath it.
-            var raw = CadRenderSource.Flatten(document);
-            _rawLayer.Items = raw;
-            Bounds = ComputeBounds(raw);
+            if (Model is not null) Model.ClassificationChanged -= OnClassificationChanged;
 
-            try {
-                _service.Load(document);
-            }
-            catch (Exception ex) {
-                StatusText = $"Failed to classify '{path}': {ex.Message}";
-                return;
-            }
+            // One walk of the file builds the whole store: every drawable entity, blocks
+            // exploded, arcs kept as arcs. The classifier is fed the same instances, so its
+            // results map straight back onto what is drawn.
+            DrawingModel model = DrawingModel.Load(document);
+            model.ClassificationChanged += OnClassificationChanged;
+            Model = model;
+            Bounds = model.Bounds;
 
-            Reclassify();
+            _service.Load(model.AnalyzableGeometry(), model.Units);
+
+            StatusText = $"{model.Primitives.Count} primitives, {_service.SegmentCount} segments "
+                       + $"(drawing units: {DrawingUnits.Name(_service.Units)}). Use Segment to classify.";
         }
 
-        private void Reclassify() {
-            if (!_service.HasData) return;
+        private void RunAutoSegmentation() {
+            if (Model is null || !_service.HasData) return;
 
             ClassificationResult result;
             try {
@@ -88,49 +121,25 @@ namespace Cad2Bim.ViewModels {
                 return;
             }
 
-            _wallsLayer.Items = result.Walls.Select(w => {
-                var edges = w.Geometry.OfType<Segment>().ToList();
-                return (object)new WallShape(ToShape(edges[0]), ToShape(edges[1]));
-            }).ToList();
-
-            _doorsLayer.Items = ToShapes(result.Openings, OpeningKind.Door);
-            _windowsLayer.Items = ToShapes(result.Openings, OpeningKind.Window);
-            _openingsLayer.Items = ToShapes(result.Openings, OpeningKind.Unknown);
+            ClassificationTagger.Apply(result, Model,
+                new AutoSegmentationOptions(SegmentWalls, SegmentDoors, SegmentWindows));
 
             string unit = Settings.UnitSuffix;
-            StatusText = $"{_rawLayer.Items.Count} drawn, {_service.SegmentCount} segments, {result.Walls.Count} walls, "
-                       + $"{_doorsLayer.Items.Count} doors, {_windowsLayer.Items.Count} windows, "
-                       + $"{_openingsLayer.Items.Count} unclassified  "
-                       + $"(SMin={Settings.SMin:0.###} {unit}, SMax={Settings.SMax:0.###} {unit}, drawing units: {DrawingUnits.Name(_service.Units)})";
+            StatusText = $"{result.Walls.Count} walls, "
+                       + $"{result.Openings.Count(o => o.Kind == OpeningKind.Door)} doors, "
+                       + $"{result.Openings.Count(o => o.Kind == OpeningKind.Window)} windows, "
+                       + $"{result.Openings.Count(o => o.Kind == OpeningKind.Unknown)} unknown openings  "
+                       + $"(SMin={Settings.SMin:0.###} {unit}, SMax={Settings.SMax:0.###} {unit}, "
+                       + $"drawing units: {DrawingUnits.Name(_service.Units)})";
         }
 
-        private static SegmentShape ToShape(Segment s) =>
-            new(s.P1.x, s.P1.y, s.P2.x, s.P2.y);
+        private void OnClassificationChanged(ClassificationDelta delta) {
+            if (Model is null || delta.Source != ChangeSource.Manual) return;
 
-        private static List<object> ToShapes(IReadOnlyList<Opening> openings, OpeningKind kind) =>
-            openings.Where(o => o.Kind == kind).Select(o => (object)new OpeningShape(
-                o.Rectangle.Select(p => (p.x, p.y)).ToList(),
-                ToShape(new Segment(o.Wall.FromAxis(o.AxisSpan.Start), o.Wall.FromAxis(o.AxisSpan.End))),
-                o.SwingArc is null ? null
-                    : new ArcShape(o.SwingArc.Center.x, o.SwingArc.Center.y, o.SwingArc.Radius,
-                                   o.SwingArc.StartAngle, o.SwingArc.EndAngle),
-                o.Leaf is null ? null : ToShape(o.Leaf))).ToList();
-
-        // Extents of the drawn geometry, so a fit-to-extents shows exactly what is rendered.
-        private static Rect ComputeBounds(IReadOnlyList<object> shapes) {
-            double minX = double.MaxValue, minY = double.MaxValue;
-            double maxX = double.MinValue, maxY = double.MinValue;
-
-            foreach (var shape in shapes.OfType<PolylineShape>()) {
-                foreach (var (x, y) in shape.Points) {
-                    if (x < minX) minX = x;
-                    if (y < minY) minY = y;
-                    if (x > maxX) maxX = x;
-                    if (y > maxY) maxY = y;
-                }
-            }
-
-            return minX > maxX ? Rect.Empty : new Rect(minX, minY, maxX - minX, maxY - minY);
+            StatusText = $"{Model.IdsIn(PrimitiveClass.Wall).Count} wall, "
+                       + $"{Model.IdsIn(PrimitiveClass.Door).Count} door, "
+                       + $"{Model.IdsIn(PrimitiveClass.Window).Count} window lines "
+                       + $"({Model.IdsIn(PrimitiveClass.Unclassified).Count} unclassified)";
         }
     }
 }

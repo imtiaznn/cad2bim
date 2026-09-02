@@ -1,4 +1,7 @@
 namespace Cad2Bim.Services.Cad {
+    /// <summary>Identity of the top-level entity currently being walked.</summary>
+    internal readonly record struct EntityContext(ulong EntityHandle);
+
     /// <summary>
     /// Receives what <see cref="CadEntityWalker"/> finds, in world coordinates with every block
     /// already flattened.
@@ -21,8 +24,19 @@ namespace Cad2Bim.Services.Cad {
         /// <summary>Whether <see cref="Line"/>, <see cref="Arc"/> and <see cref="Text"/> are worth calling.</summary>
         bool WantsPrimitives { get; }
 
-        /// <summary>Stroke view: one entity, curves already tessellated.</summary>
-        void Polyline(IReadOnlyList<(double X, double Y)> points, bool isClosed);
+        /// <summary>
+        /// A new top-level entity is about to be emitted. Everything that follows, down to the
+        /// next call, came from this entity (blocks included).
+        /// </summary>
+        void BeginEntity(in EntityContext context);
+
+        /// <summary>
+        /// Stroke view: one entity, curves already tessellated. <paramref name="analyzable"/> is
+        /// false for annotation geometry (hatch fills, dimension blocks) — such strokes are the
+        /// only representation that geometry gets, while analyzable strokes duplicate what the
+        /// primitive view already delivers.
+        /// </summary>
+        void Polyline(IReadOnlyList<(double X, double Y)> points, bool isClosed, bool analyzable);
 
         /// <summary>Primitive view: one straight span.</summary>
         void Line(double x1, double y1, double x2, double y2);

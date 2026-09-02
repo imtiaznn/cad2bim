@@ -1,0 +1,108 @@
+<UserControl x:Class="Cad2Bim.Views.Controls.AutomaticPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Cad2Bim.Views.Controls"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             Width="270">
+    <Border Background="{StaticResource PanelBrush}"
+            BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1,0,0,0">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <DockPanel LastChildFill="False" Margin="0,0,0,4">
+                    <TextBlock Text="Automatic segmentation" FontWeight="Bold"
+                               Foreground="{StaticResource TextBrush}"
+                               DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                    <Button Style="{StaticResource PanelCloseButton}"
+                            Command="{Binding ClosePanelCommand}"
+                            ToolTip="Close panel (Esc)"
+                            DockPanel.Dock="Right" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBlock Text="Drag a field to scrub, click to type. Confirm runs the segmentation."
+                           Foreground="{StaticResource TextDimBrush}"
+                           FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"/>
+
+                <TextBlock Text="LAYERS TO SEGMENT" Style="{StaticResource SectionHeader}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+                <CheckBox Content="Walls" IsChecked="{Binding SegmentWalls}" Margin="0,2"/>
+                <CheckBox Content="Doors" IsChecked="{Binding SegmentDoors}" Margin="0,2"/>
+                <CheckBox Content="Windows" IsChecked="{Binding SegmentWindows}" Margin="0,2"/>
+
+                <TextBlock Text="WALL THICKNESS" Style="{StaticResource SectionHeader}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+
+                <!-- Both fields are stored in millimetres; this only picks how they are shown.
+                     The drawing's own units are read from its INSUNITS, so a plan drawn in
+                     metres, millimetres or inches all take the same numbers here. -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="Units:" Foreground="{StaticResource TextDimBrush}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <controls:SegmentedSelector SelectedIndex="{Binding Settings.UnitIndex}"
+                                                SegmentWidth="46"
+                                                VerticalAlignment="Center">
+                        <controls:SegmentedSelector.ItemsSource>
+                            <x:Array Type="{x:Type sys:String}">
+                                <sys:String>mm</sys:String>
+                                <sys:String>inch</sys:String>
+                            </x:Array>
+                        </controls:SegmentedSelector.ItemsSource>
+                    </controls:SegmentedSelector>
+                </StackPanel>
+
+                <!-- Minimum/Maximum precede Value so the scrub range is already in the current
+                     unit when the value is coerced against it. -->
+                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
+                                          Maximum="{Binding Settings.Maximum}"
+                                          Step="{Binding Settings.Step}"
+                                          Format="{Binding Settings.Format}"
+                                          Label="{Binding Settings.SMinLabel}"
+                                          Value="{Binding Settings.SMin}"/>
+                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
+                                          Maximum="{Binding Settings.Maximum}"
+                                          Step="{Binding Settings.Step}"
+                                          Format="{Binding Settings.Format}"
+                                          Label="{Binding Settings.SMaxLabel}"
+                                          Value="{Binding Settings.SMax}"/>
+
+                <TextBlock Text="OPENINGS" Style="{StaticResource SectionHeader}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+                <TextBlock Foreground="{StaticResource TextDimBrush}" FontSize="11"
+                           Margin="0,0,0,4" TextWrapping="Wrap"
+                           Text="A gap narrower than the minimum is a column or a jog, not a doorway. The swing radius tells a door leaf from a swivel chair."/>
+
+                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
+                                          Maximum="{Binding Settings.OpeningMaximum}"
+                                          Step="{Binding Settings.OpeningStep}"
+                                          Format="{Binding Settings.Format}"
+                                          Label="Min width"
+                                          Value="{Binding Settings.MinOpeningWidth}"/>
+                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
+                                          Maximum="{Binding Settings.OpeningMaximum}"
+                                          Step="{Binding Settings.OpeningStep}"
+                                          Format="{Binding Settings.Format}"
+                                          Label="Max width"
+                                          Value="{Binding Settings.MaxOpeningWidth}"/>
+                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
+                                          Maximum="{Binding Settings.OpeningMaximum}"
+                                          Step="{Binding Settings.OpeningStep}"
+                                          Format="{Binding Settings.Format}"
+                                          Label="Min swing r"
+                                          Value="{Binding Settings.MinSwingRadius}"/>
+                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
+                                          Maximum="{Binding Settings.OpeningMaximum}"
+                                          Step="{Binding Settings.OpeningStep}"
+                                          Format="{Binding Settings.Format}"
+                                          Label="Max swing r"
+                                          Value="{Binding Settings.MaxSwingRadius}"/>
+            </StackPanel>
+
+            <Button Grid.Row="1" Style="{StaticResource PanelButton}" Content="Confirm"
+                    Command="{Binding SegmentCommand}"
+                    HorizontalAlignment="Stretch" Margin="0,14,0,0"/>
+        </Grid>
+    </Border>
+</UserControl>

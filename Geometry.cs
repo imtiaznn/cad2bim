@@ -6,7 +6,16 @@ namespace Cad2Bim {
     public record Point(double x, double y);
     
     // Primitives
-    public abstract class GeometryElement { public List<Point> Points { get; protected set; } = new(); }
+    public abstract class GeometryElement {
+        public List<Point> Points { get; protected set; } = new();
+
+        /// <summary>
+        /// Id of the CadPrimitive this element was loaded as, or -1 for derived geometry (clipped
+        /// sub-segments, synthesised opening faces). The classifier passes elements through by
+        /// reference, so a classification result can be mapped back onto the drawn primitives.
+        /// </summary>
+        public int SourceId { get; set; } = -1;
+    }
     public class TextElement {
         public Point P1 { get; init; } // top-left
         public Point P2 { get; init; } // bottom-right

@@ -17,7 +17,9 @@ namespace Cad2Bim.Services.Cad {
         public bool WantsStrokes => false;
         public bool WantsPrimitives => true;
 
-        public void Polyline(IReadOnlyList<(double X, double Y)> points, bool isClosed) { }
+        public void BeginEntity(in EntityContext context) { }
+
+        public void Polyline(IReadOnlyList<(double X, double Y)> points, bool isClosed, bool analyzable) { }
 
         public void Line(double x1, double y1, double x2, double y2) {
             double dx = x2 - x1;

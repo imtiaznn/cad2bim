@@ -4,34 +4,49 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Cad2Bim.Services;
 
 namespace Cad2Bim.Views.Rendering {
     using Cad2Bim.ViewModels;
-    using Cad2Bim.ViewModels.Shapes;
     using Point = System.Windows.Point; // Cad2Bim.Point (model record) would shadow it here
+    using CadPoint = Cad2Bim.Point;
 
     /// <summary>
-    /// Hosts each LayerViewModel as one DrawingVisual, composited in collection order and
-    /// sharing a single CAD-to-screen MatrixTransform (Y-flip + pan + zoom). Pan/zoom only
-    /// mutate the matrix; layers re-render when their items change or after a zoom settles
-    /// (to keep pen widths screen-constant). Ported from the cad2bim Viewer.
+    /// Draws the <see cref="DrawingModel"/> as one DrawingVisual per classification bucket, all
+    /// sharing a single CAD-to-screen MatrixTransform (Y-flip + pan + zoom). Pan/zoom only mutate
+    /// the matrix; buckets re-render when their classifications change (dirty chunks only, via
+    /// <see cref="BucketGeometryCache"/>) or after a zoom settles (to keep pen widths
+    /// screen-constant). Also hosts the manual brush/eraser interaction.
     /// </summary>
     public sealed class CadViewport : FrameworkElement {
         private const double MinScale = 1e-6;
         private const double MaxScale = 1e6;
         private const double BaseWidthPx = 1.0;
         private const double HighlightWidthPx = 3.0;
+        private const double HoverWidthPx = 3.0;
+        private const double PickTolerancePx = 6.0;
+        private const double BrushRadiusPx = 10.0;
         private const byte HighlightAlpha = 0xB0;
 
         private static readonly SolidColorBrush BaseStroke = Frozen(Color.FromRgb(0x88, 0x88, 0x88));
+        private static readonly SolidColorBrush HoverStroke = Frozen(Color.FromRgb(0xFF, 0xFF, 0xFF));
 
-        // Same highlight palette as the cad2bim Viewer's ClassificationHighlightLayer.
-        private static readonly Color[] HighlightPalette = [
-            Color.FromRgb(0x00, 0xFF, 0xFF),   // cyan
-            Color.FromRgb(0x00, 0xCE, 0xD1),   // teal
-            Color.FromRgb(0xDA, 0x70, 0xD6),   // orchid
-            Color.FromRgb(0x7C, 0xFC, 0x00),   // lawn green
+        // Same highlight palette as before the rework: walls cyan, doors orchid, windows green.
+        private static readonly Dictionary<PrimitiveClass, Color> BucketColors = new() {
+            [PrimitiveClass.Wall] = Color.FromRgb(0x00, 0xFF, 0xFF),
+            [PrimitiveClass.Door] = Color.FromRgb(0xDA, 0x70, 0xD6),
+            [PrimitiveClass.Window] = Color.FromRgb(0x7C, 0xFC, 0x00),
+        };
+
+        // Composition order, bottom to top: base drawing first, classified colour on top of it.
+        private static readonly PrimitiveClass[] BucketOrder = [
+            PrimitiveClass.Annotation, PrimitiveClass.Unclassified,
+            PrimitiveClass.Wall, PrimitiveClass.Window, PrimitiveClass.Door,
         ];
+
+        public static readonly DependencyProperty ModelProperty = DependencyProperty.Register(
+            nameof(Model), typeof(DrawingModel), typeof(CadViewport),
+            new PropertyMetadata(null, (d, e) => ((CadViewport)d).OnModelChanged(e)));
 
         public static readonly DependencyProperty LayersSourceProperty = DependencyProperty.Register(
             nameof(LayersSource), typeof(IEnumerable<LayerViewModel>), typeof(CadViewport),
@@ -41,26 +56,48 @@ namespace Cad2Bim.Views.Rendering {
             nameof(ContentBounds), typeof(Rect), typeof(CadViewport),
             new PropertyMetadata(Rect.Empty, (d, _) => ((CadViewport)d).OnContentBoundsChanged()));
 
+        public static readonly DependencyProperty ToolProperty = DependencyProperty.Register(
+            nameof(Tool), typeof(ManualToolViewModel), typeof(CadViewport),
+            new PropertyMetadata(null, (d, e) => ((CadViewport)d).OnToolChanged(e)));
+
         private readonly VisualCollection visuals;
-        private readonly List<(LayerViewModel Layer, DrawingVisual Visual)> layers = [];
-        private readonly Dictionary<LayerViewModel, (IReadOnlyList<object> Items, Geometry? Geometry)> polylineCache = [];
+        private readonly Dictionary<PrimitiveClass, DrawingVisual> bucketVisuals = new();
+        private readonly DrawingVisual interactionVisual;
         private readonly MatrixTransform transform = new(Matrix.Identity);
         private readonly DispatcherTimer zoomSettleTimer;
+        private readonly ViewportInteraction interaction = new();
 
+        private BucketGeometryCache? cache;
         private bool fitted;
         private bool panning;
         private Point lastMousePosition;
+        private int? hoveredId;
 
         public CadViewport() {
             visuals = new VisualCollection(this);
+
+            foreach (PrimitiveClass bucket in BucketOrder) {
+                var visual = new DrawingVisual { Transform = transform };
+                bucketVisuals[bucket] = visual;
+                visuals.Add(visual);
+            }
+
+            interactionVisual = new DrawingVisual { Transform = transform };
+            visuals.Add(interactionVisual);
+
             zoomSettleTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             zoomSettleTimer.Tick += (_, _) => {
                 zoomSettleTimer.Stop();
-                RenderAllLayers();
+                RenderAllBuckets();
             };
 
             ClipToBounds = true;
             SizeChanged += OnSizeChanged;
+        }
+
+        public DrawingModel? Model {
+            get => (DrawingModel?)GetValue(ModelProperty);
+            set => SetValue(ModelProperty, value);
         }
 
         public IEnumerable<LayerViewModel>? LayersSource {
@@ -71,6 +108,11 @@ namespace Cad2Bim.Views.Rendering {
         public Rect ContentBounds {
             get => (Rect)GetValue(ContentBoundsProperty);
             set => SetValue(ContentBoundsProperty, value);
+        }
+
+        public ManualToolViewModel? Tool {
+            get => (ManualToolViewModel?)GetValue(ToolProperty);
+            set => SetValue(ToolProperty, value);
         }
 
         private double Scale => transform.Matrix.M11;
@@ -84,66 +126,112 @@ namespace Cad2Bim.Views.Rendering {
             dc.DrawRectangle(Brushes.Black, null, new Rect(RenderSize));
         }
 
-        private void OnLayersSourceChanged(DependencyPropertyChangedEventArgs e) {
-            if (e.OldValue is INotifyCollectionChanged oldIncc) {
-                oldIncc.CollectionChanged -= OnLayersCollectionChanged;
-            }
-            if (e.NewValue is INotifyCollectionChanged newIncc) {
-                newIncc.CollectionChanged += OnLayersCollectionChanged;
+        // --- Dependency property plumbing ---------------------------------------------------
+
+        private void OnModelChanged(DependencyPropertyChangedEventArgs e) {
+            if (e.OldValue is DrawingModel oldModel) {
+                oldModel.ClassificationChanged -= OnClassificationChanged;
             }
 
-            RebuildLayers();
+            if (e.NewValue is DrawingModel newModel) {
+                newModel.ClassificationChanged += OnClassificationChanged;
+                cache = new BucketGeometryCache(newModel);
+            } else {
+                cache = null;
+            }
+
+            interaction.Model = e.NewValue as DrawingModel;
+            hoveredId = null;
+            RenderHover();
+            RenderAllBuckets();
         }
 
-        private void OnLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildLayers();
+        private void OnClassificationChanged(ClassificationDelta delta) {
+            cache?.Invalidate(delta.Ids);
 
-        private void RebuildLayers() {
-            foreach ((LayerViewModel layer, _) in layers) {
-                layer.PropertyChanged -= OnLayerPropertyChanged;
+            // Only dirty chunks rebuild; re-issuing the cached frozen geometries is cheap.
+            foreach (PrimitiveClass bucket in BucketOrder) {
+                if (bucket != PrimitiveClass.Annotation) {
+                    RenderBucket(bucket);
+                }
+            }
+        }
+
+        private void OnLayersSourceChanged(DependencyPropertyChangedEventArgs e) {
+            if (e.OldValue is IEnumerable<LayerViewModel> oldLayers) {
+                foreach (LayerViewModel layer in oldLayers) layer.PropertyChanged -= OnLayerPropertyChanged;
+                if (oldLayers is INotifyCollectionChanged oldIncc) oldIncc.CollectionChanged -= OnLayersCollectionChanged;
             }
 
-            layers.Clear();
-            polylineCache.Clear();
-            visuals.Clear();
+            if (e.NewValue is IEnumerable<LayerViewModel> newLayers) {
+                foreach (LayerViewModel layer in newLayers) layer.PropertyChanged += OnLayerPropertyChanged;
+                if (newLayers is INotifyCollectionChanged newIncc) newIncc.CollectionChanged += OnLayersCollectionChanged;
+            }
 
+            ApplyLayerVisibility();
+        }
+
+        private void OnLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) {
             foreach (LayerViewModel layer in LayersSource ?? []) {
-                var visual = new DrawingVisual { Transform = transform, Opacity = layer.IsVisible ? 1.0 : 0.0 };
+                layer.PropertyChanged -= OnLayerPropertyChanged;
                 layer.PropertyChanged += OnLayerPropertyChanged;
-                layers.Add((layer, visual));
-                visuals.Add(visual);
             }
-
-            RenderAllLayers();
+            ApplyLayerVisibility();
         }
 
         private void OnLayerPropertyChanged(object? sender, PropertyChangedEventArgs e) {
-            foreach ((LayerViewModel layer, DrawingVisual visual) in layers) {
-                if (!ReferenceEquals(layer, sender)) {
-                    continue;
-                }
+            if (e.PropertyName == nameof(LayerViewModel.IsVisible)) {
+                ApplyLayerVisibility();
+            }
+        }
 
-                if (e.PropertyName == nameof(LayerViewModel.IsVisible)) {
+        private void ApplyLayerVisibility() {
+            foreach (LayerViewModel layer in LayersSource ?? []) {
+                if (bucketVisuals.TryGetValue(layer.Bucket, out DrawingVisual? visual)) {
                     visual.Opacity = layer.IsVisible ? 1.0 : 0.0;
-                } else if (e.PropertyName == nameof(LayerViewModel.Items)) {
-                    RenderLayer(layer, visual);
                 }
             }
         }
+
+        private void OnToolChanged(DependencyPropertyChangedEventArgs e) {
+            if (e.OldValue is ManualToolViewModel oldTool) oldTool.PropertyChanged -= OnToolPropertyChanged;
+            if (e.NewValue is ManualToolViewModel newTool) newTool.PropertyChanged += OnToolPropertyChanged;
+
+            interaction.Tool = e.NewValue as ManualToolViewModel;
+            UpdateCursor();
+        }
+
+        private void OnToolPropertyChanged(object? sender, PropertyChangedEventArgs e) {
+            if (e.PropertyName != nameof(ManualToolViewModel.ActiveTool)) return;
+
+            if (!interaction.ToolArmed) {
+                interaction.EndStroke();
+                hoveredId = null;
+                RenderHover();
+            }
+            UpdateCursor();
+        }
+
+        private void UpdateCursor() => Cursor = Tool?.ActiveTool switch {
+            ManualToolKind.Brush => Cursors.Pen,
+            ManualToolKind.Eraser => Cursors.Cross,
+            _ => null,
+        };
 
         private void OnContentBoundsChanged() {
             // New document: refit next chance we have a size.
             fitted = false;
             if (ActualWidth > 0 && ActualHeight > 0) {
                 FitToExtents();
-                RenderAllLayers();
+                RenderAllBuckets();
                 fitted = true;
             }
         }
 
         private void OnSizeChanged(object sender, SizeChangedEventArgs e) {
-            if (!fitted && layers.Count > 0) {
+            if (!fitted && cache is not null) {
                 FitToExtents();
-                RenderAllLayers();
+                RenderAllBuckets();
                 fitted = true;
             }
         }
@@ -167,8 +255,15 @@ namespace Cad2Bim.Views.Rendering {
                 (ActualHeight / 2.0) + (scale * centerY));
         }
 
+        // --- Mouse: middle always pans; left pans until a tool is armed, then it paints -------
+
         protected override void OnMouseDown(MouseButtonEventArgs e) {
-            if (e.ChangedButton is MouseButton.Left or MouseButton.Middle) {
+            if (e.ChangedButton == MouseButton.Left && interaction.ToolArmed) {
+                hoveredId = null;
+                RenderHover();
+                interaction.BeginStroke(ToCad(e.GetPosition(this)), BrushRadiusPx / Math.Max(Scale, MinScale));
+                CaptureMouse();
+            } else if (e.ChangedButton is MouseButton.Left or MouseButton.Middle) {
                 panning = true;
                 lastMousePosition = e.GetPosition(this);
                 CaptureMouse();
@@ -178,24 +273,44 @@ namespace Cad2Bim.Views.Rendering {
         }
 
         protected override void OnMouseMove(MouseEventArgs e) {
-            if (panning) {
+            if (interaction.IsPainting) {
+                interaction.ContinueStroke(ToCad(e.GetPosition(this)), BrushRadiusPx / Math.Max(Scale, MinScale));
+            } else if (panning) {
                 Point position = e.GetPosition(this);
                 Matrix matrix = transform.Matrix;
                 matrix.Translate(position.X - lastMousePosition.X, position.Y - lastMousePosition.Y);
                 transform.Matrix = matrix;
                 lastMousePosition = position;
+            } else if (interaction.ToolArmed) {
+                int? hit = interaction.Pick(ToCad(e.GetPosition(this)), PickTolerancePx / Math.Max(Scale, MinScale));
+                if (hit != hoveredId) {
+                    hoveredId = hit;
+                    RenderHover();
+                }
             }
 
             base.OnMouseMove(e);
         }
 
         protected override void OnMouseUp(MouseButtonEventArgs e) {
-            if (panning && e.ChangedButton is MouseButton.Left or MouseButton.Middle) {
+            if (interaction.IsPainting && e.ChangedButton == MouseButton.Left) {
+                interaction.EndStroke();
+                ReleaseMouseCapture();
+            } else if (panning && e.ChangedButton is MouseButton.Left or MouseButton.Middle) {
                 panning = false;
                 ReleaseMouseCapture();
             }
 
             base.OnMouseUp(e);
+        }
+
+        protected override void OnMouseLeave(MouseEventArgs e) {
+            if (hoveredId is not null) {
+                hoveredId = null;
+                RenderHover();
+            }
+
+            base.OnMouseLeave(e);
         }
 
         protected override void OnMouseWheel(MouseWheelEventArgs e) {
@@ -215,133 +330,57 @@ namespace Cad2Bim.Views.Rendering {
             base.OnMouseWheel(e);
         }
 
-        private void RenderAllLayers() {
-            foreach ((LayerViewModel layer, DrawingVisual visual) in layers) {
-                RenderLayer(layer, visual);
+        private CadPoint ToCad(Point screen) {
+            Matrix matrix = transform.Matrix;
+            matrix.Invert();
+            Point cad = matrix.Transform(screen);
+            return new CadPoint(cad.X, cad.Y);
+        }
+
+        // --- Rendering ----------------------------------------------------------------------
+
+        private void RenderAllBuckets() {
+            foreach (PrimitiveClass bucket in BucketOrder) {
+                RenderBucket(bucket);
             }
         }
 
-        private void RenderLayer(LayerViewModel layer, DrawingVisual visual) {
+        private void RenderBucket(PrimitiveClass bucket) {
+            DrawingVisual visual = bucketVisuals[bucket];
+            using DrawingContext dc = visual.RenderOpen();
+
+            if (cache is null) {
+                return;
+            }
+
             double scale = Math.Max(Scale, MinScale);
-            Pen pen = layer.HighlightIndex is int index
-                ? new Pen(Frozen(WithAlpha(HighlightPalette[index % HighlightPalette.Length])), HighlightWidthPx / scale)
+            Pen pen = BucketColors.TryGetValue(bucket, out Color color)
+                ? new Pen(Frozen(WithAlpha(color)), HighlightWidthPx / scale)
                 : new Pen(BaseStroke, BaseWidthPx / scale);
             pen.Freeze();
 
-            using DrawingContext dc = visual.RenderOpen();
-
-            // A raw CAD file is tens of thousands of polylines; one batched geometry strokes far
-            // faster than a call per item, and it only depends on Items, not on the current zoom.
-            if (BatchedPolylines(layer) is Geometry batch) {
-                dc.DrawGeometry(null, pen, batch);
-            }
-
-            foreach (object item in layer.Items) {
-                if (item is not PolylineShape) {
-                    Draw(dc, pen, item);
+            for (int chunk = 0; chunk < cache.ChunkCount; chunk++) {
+                if (cache.Get(bucket, chunk) is Geometry geometry) {
+                    dc.DrawGeometry(null, pen, geometry);
                 }
             }
         }
 
-        private Geometry? BatchedPolylines(LayerViewModel layer) {
-            if (polylineCache.TryGetValue(layer, out var cached) && ReferenceEquals(cached.Items, layer.Items)) {
-                return cached.Geometry;
-            }
+        private void RenderHover() {
+            using DrawingContext dc = interactionVisual.RenderOpen();
 
-            StreamGeometry? geometry = null;
-            StreamGeometryContext? ctx = null;
-
-            foreach (object item in layer.Items) {
-                if (item is not PolylineShape polyline || polyline.Points.Count < 2) {
-                    continue;
-                }
-
-                geometry ??= new StreamGeometry();
-                ctx ??= geometry.Open();
-
-                (double x, double y) = polyline.Points[0];
-                ctx.BeginFigure(new Point(x, y), false, polyline.IsClosed);
-                ctx.PolyLineTo(
-                    polyline.Points.Skip(1).Select(p => new Point(p.X, p.Y)).ToList(),
-                    true, false);
-            }
-
-            ctx?.Close();
-            geometry?.Freeze();
-
-            polylineCache[layer] = (layer.Items, geometry);
-            return geometry;
-        }
-
-        private static void Draw(DrawingContext dc, Pen pen, object item) {
-            switch (item) {
-                case SegmentShape s:
-                    dc.DrawLine(pen, new Point(s.X1, s.Y1), new Point(s.X2, s.Y2));
-                    break;
-                case ArcShape a:
-                    DrawArc(dc, pen, a);
-                    break;
-                case WallShape w:
-                    dc.DrawLine(pen, new Point(w.A.X1, w.A.Y1), new Point(w.A.X2, w.A.Y2));
-                    dc.DrawLine(pen, new Point(w.B.X1, w.B.Y1), new Point(w.B.X2, w.B.Y2));
-                    break;
-                case OpeningShape o:
-                    DrawClosed(dc, pen, o.Rectangle);
-                    dc.DrawLine(pen, new Point(o.Threshold.X1, o.Threshold.Y1),
-                                     new Point(o.Threshold.X2, o.Threshold.Y2));
-                    if (o.Leaf is SegmentShape leaf) {
-                        dc.DrawLine(pen, new Point(leaf.X1, leaf.Y1), new Point(leaf.X2, leaf.Y2));
-                    }
-                    if (o.Swing is ArcShape swing) {
-                        DrawArc(dc, pen, swing);
-                    }
-                    break;
-            }
-        }
-
-        private static void DrawClosed(DrawingContext dc, Pen pen, IReadOnlyList<(double X, double Y)> points) {
-            if (points.Count < 2) {
+            if (hoveredId is not int id || Model is not DrawingModel model) {
                 return;
             }
 
-            StreamGeometry geometry = new();
+            var geometry = new StreamGeometry();
             using (StreamGeometryContext ctx = geometry.Open()) {
-                ctx.BeginFigure(new Point(points[0].X, points[0].Y), false, true);
-                ctx.PolyLineTo(points.Skip(1).Select(p => new Point(p.X, p.Y)).ToList(), true, false);
+                BucketGeometryCache.Append(ctx, model.Primitives[id].Geometry);
             }
-
             geometry.Freeze();
-            dc.DrawGeometry(null, pen, geometry);
-        }
 
-        private static void DrawArc(DrawingContext dc, Pen pen, ArcShape arc) {
-            double sweep = arc.EndAngle - arc.StartAngle;
-            while (sweep <= 0) {
-                sweep += 2 * Math.PI;
-            }
-
-            Point At(double angle) =>
-                new(arc.Cx + (arc.Radius * Math.Cos(angle)), arc.Cy + (arc.Radius * Math.Sin(angle)));
-
-            // A closed sweep has no distinct endpoints for ArcTo to run between.
-            if (sweep >= (2 * Math.PI) - 1e-9) {
-                dc.DrawEllipse(null, pen, new Point(arc.Cx, arc.Cy), arc.Radius, arc.Radius);
-                return;
-            }
-
-            StreamGeometry geometry = new();
-            using (StreamGeometryContext ctx = geometry.Open()) {
-                ctx.BeginFigure(At(arc.StartAngle), false, false);
-                // Model angles run counter-clockwise about a Y-up CAD axis, but WPF resolves a
-                // sweep direction in its own Y-down convention. These points are authored in CAD
-                // space, so the handedness is opposite and a CAD counter-clockwise arc has to be
-                // asked for as Clockwise - naming it the other way picks the mirror arc, which
-                // draws the door swinging the wrong way.
-                ctx.ArcTo(At(arc.StartAngle + sweep), new Size(arc.Radius, arc.Radius),
-                          0, sweep > Math.PI, SweepDirection.Clockwise, true, false);
-            }
-
-            geometry.Freeze();
+            var pen = new Pen(HoverStroke, HoverWidthPx / Math.Max(Scale, MinScale));
+            pen.Freeze();
             dc.DrawGeometry(null, pen, geometry);
         }
 

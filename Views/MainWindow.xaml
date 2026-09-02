@@ -1,11 +1,15 @@
-﻿<Window x:Class="Cad2Bim.Views.MainWindow"
+<Window x:Class="Cad2Bim.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Cad2Bim.Views.Controls"
         xmlns:rendering="clr-namespace:Cad2Bim.Views.Rendering"
-        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:vm="clr-namespace:Cad2Bim.ViewModels"
         Title="Cad2Bim Debug Viewer" Width="1100" Height="700"
         Background="{StaticResource WindowBrush}">
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding ClosePanelCommand}"/>
+        <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
+    </Window.InputBindings>
     <DockPanel>
 
         <!-- Top bar: file commands on the left, ribbon tools on the right -->
@@ -19,91 +23,45 @@
                         Tag="Open"
                         ToolTip="Open a DWG or DXF drawing"
                         DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                <controls:SegmentButton DockPanel.Dock="Left" Margin="8,0,0,0" VerticalAlignment="Center"
+                                        AutomaticCommand="{Binding ShowAutomaticPanelCommand}"
+                                        ManualCommand="{Binding ShowManualPanelCommand}"/>
                 <controls:LayersButton ItemsSource="{Binding Layers}" DockPanel.Dock="Right"
                                        VerticalAlignment="Center" Margin="8,0,0,0"/>
             </DockPanel>
         </Border>
 
-        <!-- Right: live classification settings -->
-        <Border DockPanel.Dock="Right" Width="270" Background="{StaticResource PanelBrush}"
-                BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1,0,0,0">
-            <StackPanel Margin="10">
-                <TextBlock Text="Classification settings" FontWeight="Bold"
-                           Foreground="{StaticResource TextBrush}" Margin="0,0,0,4"/>
-                <TextBlock Text="Drag a field to scrub, click to type." Foreground="{StaticResource TextDimBrush}"
-                           FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"/>
-
-                <TextBlock Text="WALL THICKNESS" Style="{StaticResource SectionHeader}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-
-                <!-- Both fields are stored in millimetres; this only picks how they are shown.
-                     The drawing's own units are read from its INSUNITS, so a plan drawn in
-                     metres, millimetres or inches all take the same numbers here. -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                    <TextBlock Text="Units:" Foreground="{StaticResource TextDimBrush}"
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <controls:SegmentedSelector SelectedIndex="{Binding Settings.UnitIndex}"
-                                                SegmentWidth="46"
-                                                VerticalAlignment="Center">
-                        <controls:SegmentedSelector.ItemsSource>
-                            <x:Array Type="{x:Type sys:String}">
-                                <sys:String>mm</sys:String>
-                                <sys:String>inch</sys:String>
-                            </x:Array>
-                        </controls:SegmentedSelector.ItemsSource>
-                    </controls:SegmentedSelector>
-                </StackPanel>
-
-                <!-- Minimum/Maximum precede Value so the scrub range is already in the current
-                     unit when the value is coerced against it. -->
-                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
-                                          Maximum="{Binding Settings.Maximum}"
-                                          Step="{Binding Settings.Step}"
-                                          Format="{Binding Settings.Format}"
-                                          Label="{Binding Settings.SMinLabel}"
-                                          Value="{Binding Settings.SMin}"/>
-                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
-                                          Maximum="{Binding Settings.Maximum}"
-                                          Step="{Binding Settings.Step}"
-                                          Format="{Binding Settings.Format}"
-                                          Label="{Binding Settings.SMaxLabel}"
-                                          Value="{Binding Settings.SMax}"/>
-
-                <TextBlock Text="OPENINGS" Style="{StaticResource SectionHeader}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-                <TextBlock Foreground="{StaticResource TextDimBrush}" FontSize="11"
-                           Margin="0,0,0,4" TextWrapping="Wrap"
-                           Text="A gap narrower than the minimum is a column or a jog, not a doorway. The swing radius tells a door leaf from a swivel chair."/>
-
-                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
-                                          Maximum="{Binding Settings.OpeningMaximum}"
-                                          Step="{Binding Settings.OpeningStep}"
-                                          Format="{Binding Settings.Format}"
-                                          Label="Min width"
-                                          Value="{Binding Settings.MinOpeningWidth}"/>
-                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
-                                          Maximum="{Binding Settings.OpeningMaximum}"
-                                          Step="{Binding Settings.OpeningStep}"
-                                          Format="{Binding Settings.Format}"
-                                          Label="Max width"
-                                          Value="{Binding Settings.MaxOpeningWidth}"/>
-                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
-                                          Maximum="{Binding Settings.OpeningMaximum}"
-                                          Step="{Binding Settings.OpeningStep}"
-                                          Format="{Binding Settings.Format}"
-                                          Label="Min swing r"
-                                          Value="{Binding Settings.MinSwingRadius}"/>
-                <controls:NumericScrubBox Minimum="{Binding Settings.Minimum}"
-                                          Maximum="{Binding Settings.OpeningMaximum}"
-                                          Step="{Binding Settings.OpeningStep}"
-                                          Format="{Binding Settings.Format}"
-                                          Label="Max swing r"
-                                          Value="{Binding Settings.MaxSwingRadius}"/>
-            </StackPanel>
-        </Border>
+        <!-- Right: one segmentation panel at a time, collapsed when closed. -->
+        <controls:AutomaticPanel DockPanel.Dock="Right">
+            <controls:AutomaticPanel.Style>
+                <Style TargetType="controls:AutomaticPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ActivePanel}" Value="{x:Static vm:SegmentPanel.Automatic}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </controls:AutomaticPanel.Style>
+        </controls:AutomaticPanel>
+        <controls:ManualPanel DockPanel.Dock="Right">
+            <controls:ManualPanel.Style>
+                <Style TargetType="controls:ManualPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ActivePanel}" Value="{x:Static vm:SegmentPanel.Manual}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </controls:ManualPanel.Style>
+        </controls:ManualPanel>
 
         <!-- Center: CAD viewport -->
-        <rendering:CadViewport LayersSource="{Binding Layers}" ContentBounds="{Binding Bounds}"/>
+        <rendering:CadViewport Model="{Binding Model}"
+                               LayersSource="{Binding Layers}"
+                               ContentBounds="{Binding Bounds}"
+                               Tool="{Binding ManualTool}"/>
 
     </DockPanel>
 </Window>

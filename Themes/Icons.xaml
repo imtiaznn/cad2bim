@@ -18,6 +18,44 @@
         </Canvas>
     </Viewbox>
 
+    <!-- Polyline with node handles: line work being picked into segments. -->
+    <Viewbox x:Key="IconSegment" x:Shared="False" Width="22" Height="22">
+        <Canvas Width="24" Height="24">
+            <Path Data="M3,20 L9,9 L15,14 L21,5"
+                  Stroke="{StaticResource TextBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+            <Path Data="M1.5,18.5 h3 v3 h-3 Z M7.5,7.5 h3 v3 h-3 Z M13.5,12.5 h3 v3 h-3 Z M19.5,3.5 h3 v3 h-3 Z"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.2"
+                  Fill="Transparent"/>
+        </Canvas>
+    </Viewbox>
+
+    <!-- Paint brush sweeping to the lower left. -->
+    <Viewbox x:Key="IconBrush" x:Shared="False" Width="22" Height="22">
+        <Canvas Width="24" Height="24">
+            <Path Data="M14.5,3 L21,9.5 L16,14.5 L9.5,8 Z"
+                  Stroke="{StaticResource TextBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round" Fill="Transparent"/>
+            <Path Data="M9.5,8 C7,11 5,15 3.5,20.5 C9,19 13,17 16,14.5"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+        </Canvas>
+    </Viewbox>
+
+    <!-- Tilted eraser block over a baseline. -->
+    <Viewbox x:Key="IconEraser" x:Shared="False" Width="22" Height="22">
+        <Canvas Width="24" Height="24">
+            <Path Data="M4,15 L13,4 L20,10 L11,21 L6,21 Z"
+                  Stroke="{StaticResource TextBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round" Fill="Transparent"/>
+            <Path Data="M8.5,9.5 L15.5,15.5"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"/>
+            <Path Data="M13,21 L21,21"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+        </Canvas>
+    </Viewbox>
+
     <!-- Sheet with a folded corner. -->
     <Viewbox x:Key="IconFile" x:Shared="False" Width="22" Height="22">
         <Canvas Width="24" Height="24">

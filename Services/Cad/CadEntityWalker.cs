@@ -26,6 +26,7 @@ namespace Cad2Bim.Services.Cad {
 
         public static void Walk(CadDocument document, ICadGeometrySink sink) {
             foreach (Entity entity in document.Entities) {
+                sink.BeginEntity(new EntityContext(entity.Handle));
                 Emit(entity, sink, Xform.Identity, 0, analyzable: true);
             }
         }
@@ -192,7 +193,7 @@ namespace Cad2Bim.Services.Cad {
                     points.Add((vertices[^1].X, vertices[^1].Y));
                 }
 
-                Stroke(sink, xform, isClosed, points);
+                Stroke(sink, xform, isClosed, analyzable, points);
             }
 
             if (!analyzable || !sink.WantsPrimitives) {
@@ -271,7 +272,7 @@ namespace Cad2Bim.Services.Cad {
                                       double centerX, double centerY, double radius,
                                       double startAngle, double endAngle) {
             if (sink.WantsStrokes) {
-                Stroke(sink, xform, isFullCircle, tessellated);
+                Stroke(sink, xform, isFullCircle, analyzable, tessellated);
             }
 
             if (!analyzable || !sink.WantsPrimitives) {
@@ -363,7 +364,7 @@ namespace Cad2Bim.Services.Cad {
             }
 
             if (sink.WantsStrokes) {
-                Stroke(sink, xform, isClosed, points);
+                Stroke(sink, xform, isClosed, analyzable, points);
             }
 
             if (!analyzable || !sink.WantsPrimitives) {
@@ -377,7 +378,7 @@ namespace Cad2Bim.Services.Cad {
             }
         }
 
-        private static void Stroke(ICadGeometrySink sink, Xform xform, bool isClosed,
+        private static void Stroke(ICadGeometrySink sink, Xform xform, bool isClosed, bool analyzable,
                                    IReadOnlyList<(double X, double Y)> points) {
             if (points.Count < 2) {
                 return;
@@ -388,7 +389,7 @@ namespace Cad2Bim.Services.Cad {
                 mapped[i] = xform.Apply(points[i].X, points[i].Y);
             }
 
-            sink.Polyline(mapped, isClosed);
+            sink.Polyline(mapped, isClosed, analyzable);
         }
     }
 }

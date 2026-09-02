@@ -24,10 +24,15 @@ namespace Cad2Bim.Services {
 
         public void Load(ACadSharp.CadDocument document) {
             var (geometry, _) = CadLoader.LoadCadEntities(document);
+            Load(geometry, document.Header?.InsUnits ?? UnitsType.Unitless);
+        }
+
+        /// <summary>Feed from an already-built store (<see cref="DrawingModel.AnalyzableGeometry"/>).</summary>
+        public void Load(List<GeometryElement> geometry, UnitsType units) {
             _geometry = geometry;
             _segments = geometry.OfType<Segment>().ToList();
 
-            Units = document.Header?.InsUnits ?? UnitsType.Unitless;
+            Units = units;
             MillimetersPerUnit = DrawingUnits.MillimetersPerUnit(Units);
         }
 
