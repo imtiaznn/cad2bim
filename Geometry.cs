@@ -330,7 +330,7 @@ namespace Cad2Bim {
         }
     }
 
-    /// <summary>What an opening turned out to be. Per the paper, the swing arc is the discriminator.</summary>
+    /// <summary>What an opening turned out to be. The swing arc is the discriminator.</summary>
     public enum OpeningKind { Unknown, Door, Window }
 
     /// <summary>
@@ -343,7 +343,7 @@ namespace Cad2Bim {
         GapBothFaces = 1 << 0,   // both wall faces are interrupted here
         GapOneFace = 1 << 1,   // only one is - common, and still a real opening
         JambPair = 1 << 2,   // two cross-wall jamb lines bound the span
-        EqSixPair = 1 << 3,   // e1/e2 found at ~wall thickness, the paper's rule
+        FacePair = 1 << 3,   // e1/e2 found at ~wall thickness across the span
         SynthesisedFaces = 1 << 4,   // nothing drawn inside; e1/e2 taken from the wall itself
         SwingArc = 1 << 5,   // a door swing sits in the span
         LeafSegment = 1 << 6,   // the swing has a matching door leaf
@@ -351,8 +351,8 @@ namespace Cad2Bim {
     }
 
     /// <summary>
-    /// Paper eq. (6): an opening is two segments inside a wall, separated by about the wall's own
-    /// thickness, optionally with an arc (e3) that makes it a door rather than a window.
+    /// An opening is two segments inside a wall, separated by about the wall's own thickness,
+    /// optionally with an arc (e3) that makes it a door rather than a window.
     /// </summary>
     public class Opening : BuildingElement {
         public Wall Wall { get; }
@@ -371,7 +371,7 @@ namespace Cad2Bim {
 
         public Point Center => Wall.FromAxis((AxisSpan.Start + AxisSpan.End) / 2);
 
-        /// <summary>The four corners of the paper's "rectangle included in a wall".</summary>
+        /// <summary>The four corners of the rectangle the opening cuts out of the wall.</summary>
         public IReadOnlyList<Point> Rectangle { get; }
 
         public OpeningEvidence Evidence { get; }

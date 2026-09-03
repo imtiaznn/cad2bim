@@ -188,8 +188,8 @@ namespace Cad2Bim.Bim.Ifc {
             int placement = IdentityPlacement(step, storeyPlacement);
             int shape = BoxShape(step, bodyContext, door.FootprintRect, 0, door.HeadMm);
 
-            // Hinge end and swing side fold into the paper's four subtypes; with one leaf that is
-            // a left- or right-hung single swing.
+            // Hinge end and swing side fold into IFC's door operation types; with one leaf that
+            // is a left- or right-hung single swing.
             string operation = door.HingeAtStart ^ door.SwingsPositiveNormal
                 ? "SINGLE_SWING_RIGHT" : "SINGLE_SWING_LEFT";
 

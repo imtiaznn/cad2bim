@@ -36,7 +36,7 @@ namespace Cad2Bim.Classification {
         public static readonly ClassificationTolerances DefaultMillimeters = new(
             MinOpeningWidth: 600,
             MaxOpeningWidth: 4000,
-            // Deliberately loose: the paper's ε is scored, not gated - see OpeningClassifier.
+            // Deliberately loose: the thickness residual is scored, not gated - see OpeningClassifier.
             ThicknessEpsilon: 150,
             // Nominally equal walls measure 107-118 mm across one drawing, so collinearity has to
             // tolerate a face drifting by about this much.

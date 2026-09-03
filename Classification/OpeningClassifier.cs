@@ -1,12 +1,12 @@
 namespace Cad2Bim.Classification {
     /// <summary>
-    /// Paper eq. (6): an opening is a pair of segments lying in a wall, about the wall's own
-    /// thickness apart, optionally accompanied by an arc (e3) that makes it a door.
+    /// An opening is a pair of segments lying in a wall, about the wall's own thickness apart,
+    /// optionally accompanied by an arc (e3) that makes it a door.
     /// <para>
-    /// The search runs the other way round from the equation, because a vector drawing gives the
-    /// wall first: find where a wall is interrupted, then look inside the interruption for the
-    /// evidence eq. (6) describes. That is the paper's own second cue - "discontinuities in the
-    /// wall representation" - and it is what makes the rule usable on real geometry.
+    /// The search runs the other way round from that definition, because a vector drawing gives
+    /// the wall first: find where a wall is interrupted, then look inside the interruption for
+    /// the evidence the definition describes - discontinuities in the wall representation are
+    /// the leading cue, and starting from them is what makes the rule usable on real geometry.
     /// </para>
     /// </summary>
     public static class OpeningClassifier {
@@ -108,17 +108,17 @@ namespace Cad2Bim.Classification {
                 return null;
             }
 
-            (Segment? e1, Segment? e2, double residual) = FindEqSixPair(run, gap, nearby, tolerances);
+            (Segment? e1, Segment? e2, double residual) = FindFacePair(run, gap, nearby, tolerances);
 
             if (e1 is not null && e2 is not null) {
-                evidence |= OpeningEvidence.EqSixPair;
+                evidence |= OpeningEvidence.FacePair;
                 if (Math.Abs(run.NormalParam(e1.Mid)) < (run.Thickness / 2) - tolerances.EndpointTolerance
                  || Math.Abs(run.NormalParam(e2.Mid)) < (run.Thickness / 2) - tolerances.EndpointTolerance) {
                     evidence |= OpeningEvidence.GlazingLines;
                 }
             } else {
                 // Nothing drawn inside the hole - the ordinary case for a door, whose gap is left
-                // empty. The paper's e1/e2 exist there too, as the edge of the wall's own fill;
+                // empty. The e1/e2 faces exist there too, as the edge of the wall's own fill;
                 // vector geometry only implies them, so they are reconstructed from the wall.
                 double half = run.Thickness / 2;
                 e1 = new Segment(run.FromAxis(gap.Start, -half), run.FromAxis(gap.End, -half));
@@ -148,22 +148,21 @@ namespace Cad2Bim.Classification {
 
             if (swing is not null) claimedSwings.Add(swing);
 
-            // The paper's discriminator is the swing arc: "To distinguish a door from a window, an
-            // arc can be drawn to represent a door, explaining why parameter e3 is optional." That
-            // half is kept exactly.
+            // The discriminator is the swing arc: an arc drawn in the span marks a door, which is
+            // why parameter e3 is optional.
             //
-            // Its other half - anything without an arc is a window - does not survive contact with
+            // Its converse - anything without an arc is a window - does not survive contact with
             // vector data. On a scanned plan the wall is a filled black band, so any hole in it was
             // drawn deliberately; in a DWG a hole is just where two lines stopped, and most such
             // holes are cased openings, doorways whose swing was never drawn, or the classifier
             // losing the thread. Calling all of them windows was measured here to invent about a
             // hundred of them in a drawing that has none.
             //
-            // So a window has to be positively drawn - eq. (6)'s e1/e2 actually found across the
+            // So a window has to be positively drawn - the e1/e2 pair actually found across the
             // opening - and a bare hole is reported as what it is rather than guessed at.
             OpeningKind kind =
                 swing is not null ? OpeningKind.Door
-                : evidence.HasFlag(OpeningEvidence.EqSixPair) ? OpeningKind.Window
+                : evidence.HasFlag(OpeningEvidence.FacePair) ? OpeningKind.Window
                 : OpeningKind.Unknown;
 
             report?.Accept(kind);
@@ -174,7 +173,7 @@ namespace Cad2Bim.Classification {
         /// <summary>
         /// Whether each side of the wall is interrupted here or merely ends. Measured per side,
         /// because at a real doorway one face is commonly bracketed while the other stops short -
-        /// requiring both to agree is what makes a strict reading of eq. (6) miss most doors.
+        /// requiring both to agree is what makes a strict both-faces rule miss most doors.
         /// </summary>
         private static OpeningEvidence FaceEvidence(WallRun run, (double Start, double End) gap,
                                                     ClassificationTolerances tolerances) {
@@ -206,11 +205,11 @@ namespace Cad2Bim.Classification {
         }
 
         /// <summary>
-        /// eq. (6) proper: two segments inside the wall band, running along it, separated by about
-        /// the wall's thickness. The pair furthest apart wins, since a window's outer lines sit on
-        /// the faces and any mullions fall between them.
+        /// The drawn face pair: two segments inside the wall band, running along it, separated by
+        /// about the wall's thickness. The pair furthest apart wins, since a window's outer lines
+        /// sit on the faces and any mullions fall between them.
         /// </summary>
-        private static (Segment? E1, Segment? E2, double Residual) FindEqSixPair(
+        private static (Segment? E1, Segment? E2, double Residual) FindFacePair(
             WallRun run, (double Start, double End) gap,
             IReadOnlyList<Segment> segments, ClassificationTolerances tolerances) {
 

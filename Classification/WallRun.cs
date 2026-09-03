@@ -3,8 +3,8 @@ namespace Cad2Bim.Classification {
     /// One physical wall, reassembled from the fragments the wall pass produced.
     /// <para>
     /// <see cref="CadClassifier.ClassifyWalls"/> pairs whole segments exclusively, so a wall that
-    /// an opening interrupts arrives as several collinear <see cref="Wall"/>s. The paper's
-    /// "discontinuities in the wall representation" therefore appear <em>between</em> fragments,
+    /// an opening interrupts arrives as several collinear <see cref="Wall"/>s. The
+    /// discontinuities in the wall representation therefore appear <em>between</em> fragments,
     /// not inside any one of them, and a run is what makes them visible.
     /// </para>
     /// <para>

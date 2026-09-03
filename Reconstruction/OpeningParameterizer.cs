@@ -4,9 +4,9 @@ using Cad2Bim.Classification;
 namespace Cad2Bim.Reconstruction {
     /// <summary>
     /// Stages 2 and 3: turn a classified <see cref="Opening"/> into a placeable BIM element.
-    /// Doors follow the paper's line–arc reading — the swing arc's centre is the hinge, its radius
-    /// the leaf; windows take their position and width straight from the span the classifier
-    /// grouped on the run (the paper's representative-line step, already done upstream).
+    /// Doors follow the line–arc reading — the swing arc's centre is the hinge, its radius the
+    /// leaf; windows take their position and width straight from the span the classifier grouped
+    /// on the run.
     /// </summary>
     public static class OpeningParameterizer {
         public static BimDoor Door(Opening opening, WallRun run, BimConversionOptions options,
