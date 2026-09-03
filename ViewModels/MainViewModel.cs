@@ -5,28 +5,36 @@ using Cad2Bim.Services;
 
 namespace Cad2Bim.ViewModels {
     /// <summary>Which right-docked panel is open. Top-level so XAML can reference it via x:Static.</summary>
-    public enum SegmentPanel { None, Automatic, Manual }
+    public enum SegmentPanel { None, Automatic, Manual, Convert }
 
     public class MainViewModel : ViewModelBase {
         private readonly ClassificationService _service;
         private readonly Func<string?> _pickFile;
+        private readonly Func<string, string?> _pickSavePath;
 
         public ObservableCollection<LayerViewModel> Layers { get; }
         public SettingsViewModel Settings { get; }
+        public ConvertSettingsViewModel ConvertSettings { get; } = new();
         public ManualToolViewModel ManualTool { get; } = new();
 
         public ICommand OpenFileCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand ShowAutomaticPanelCommand { get; }
         public ICommand ShowManualPanelCommand { get; }
+        public ICommand ShowConvertPanelCommand { get; }
         public ICommand ClosePanelCommand { get; }
         public ICommand SegmentCommand { get; }
+        public ICommand ConvertToBimCommand { get; }
         public ICommand UndoCommand { get; }
 
         private DrawingModel? _model;
         public DrawingModel? Model { get => _model; private set => SetField(ref _model, value); }
 
         private string? _filePath;
+
+        // The last automatic classification, kept because BIM conversion consumes the rich
+        // result (walls, runs, openings), not the per-primitive tags it leaves behind.
+        private ClassificationResult? _lastClassification;
 
         private SegmentPanel _activePanel = SegmentPanel.None;
         public SegmentPanel ActivePanel {
@@ -53,9 +61,11 @@ namespace Cad2Bim.ViewModels {
         private string _statusText = "Open a CAD file to begin.";
         public string StatusText { get => _statusText; private set => SetField(ref _statusText, value); }
 
-        public MainViewModel(ClassificationService service, Func<string?> pickFile) {
+        public MainViewModel(ClassificationService service, Func<string?> pickFile,
+                             Func<string, string?> pickSavePath) {
             _service = service;
             _pickFile = pickFile;
+            _pickSavePath = pickSavePath;
 
             // Settings changes no longer trigger anything by themselves — classification runs
             // only when the Automatic panel's Confirm button is pressed.
@@ -78,7 +88,16 @@ namespace Cad2Bim.ViewModels {
 
             ShowAutomaticPanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.Automatic);
             ShowManualPanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.Manual);
+            ShowConvertPanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.Convert);
             ClosePanelCommand = new RelayCommand(() => ActivePanel = SegmentPanel.None);
+
+            // Manual segmentation (and a restored sidecar) only tags primitives, so the rich
+            // auto-run result may be absent — anything tagged as wall is enough to convert.
+            ConvertToBimCommand = new RelayCommand(
+                ConvertToBim,
+                () => Model is not null && ConvertSettings.IsValid
+                   && (_lastClassification is not null
+                       || Model.IdsIn(PrimitiveClass.Wall).Count > 0));
 
             SegmentCommand = new RelayCommand(
                 RunAutoSegmentation,
@@ -107,6 +126,7 @@ namespace Cad2Bim.ViewModels {
             Model = model;
             Bounds = model.Bounds;
             _filePath = path;
+            _lastClassification = null;
 
             _service.Load(model.AnalyzableGeometry(), model.Units);
 
@@ -145,6 +165,7 @@ namespace Cad2Bim.ViewModels {
 
             ClassificationTagger.Apply(result, Model,
                 new AutoSegmentationOptions(SegmentWalls, SegmentDoors, SegmentWindows));
+            _lastClassification = result;
 
             string unit = Settings.UnitSuffix;
             StatusText = $"{result.Walls.Count} walls, "
@@ -155,8 +176,61 @@ namespace Cad2Bim.ViewModels {
                        + $"drawing units: {DrawingUnits.Name(_service.Units)})";
         }
 
+        private void ConvertToBim() {
+            if (Model is null || _filePath is null) return;
+
+            ClassificationResult? classification = _lastClassification ?? ClassificationFromTags();
+            if (classification is null) {
+                StatusText = "Nothing to convert — tag some walls or run Segment first.";
+                return;
+            }
+
+            string? outputPath = _pickSavePath(
+                System.IO.Path.GetFileNameWithoutExtension(_filePath) + ".ifc");
+            if (outputPath is null) return;
+
+            StatusText = "Converting…";
+            try {
+                Bim.ConversionReport report = Bim.ConvertPipeline.Run(
+                    classification, _service.MillimetersPerUnit,
+                    ConvertSettings.Options, _filePath, outputPath);
+
+                StatusText = $"Exported {report.WallCount} walls, {report.DoorCount} doors, "
+                           + $"{report.WindowCount} windows, {report.UnknownOpeningCount} openings "
+                           + $"to {System.IO.Path.GetFileName(outputPath)}";
+            }
+            catch (Exception ex) {
+                StatusText = $"Convert failed: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds a classification from the model's tags when no automatic run is cached:
+        /// wall pairing on the wall-tagged segments, openings re-derived from the gaps between
+        /// them. Manual door/window tags cannot feed conversion directly — an IFC door needs a
+        /// span, a hinge and a swing, which only the classifier's geometry reading provides.
+        /// </summary>
+        private ClassificationResult? ClassificationFromTags() {
+            if (Model is null) return null;
+
+            List<GeometryElement> Tagged(PrimitiveClass bucket) => Model.IdsIn(bucket)
+                .Select(id => Model.Primitives[id].Geometry)
+                .ToList();
+
+            List<Segment> wallSegments = Tagged(PrimitiveClass.Wall).OfType<Segment>().ToList();
+            if (wallSegments.Count == 0) return null;
+
+            return _service.ClassifyTagged(wallSegments,
+                Tagged(PrimitiveClass.Door), Tagged(PrimitiveClass.Window),
+                Settings.SMinMillimeters, Settings.SMaxMillimeters, Settings.Tolerances);
+        }
+
         private void OnClassificationChanged(ClassificationDelta delta) {
             if (Model is null || delta.Source != ChangeSource.Manual) return;
+
+            // Hand edits supersede the cached automatic result; conversion must rebuild from the
+            // corrected tags, not export what the auto run thought before the correction.
+            _lastClassification = null;
 
             StatusText = $"{Model.IdsIn(PrimitiveClass.Wall).Count} wall, "
                        + $"{Model.IdsIn(PrimitiveClass.Door).Count} door, "

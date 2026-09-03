@@ -1,0 +1,47 @@
+<UserControl x:Class="Cad2Bim.Views.Controls.ConvertButton"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <Grid>
+        <!-- Square ribbon button, same shape as Open/Segment/Layers. -->
+        <ToggleButton x:Name="PART_Toggle"
+                      Style="{StaticResource RibbonToggleButton}"
+                      Tag="Convert"
+                      ToolTip="Convert the classified drawing to another format"
+                      PreviewMouseLeftButtonDown="OnTogglePreviewMouseDown"
+                      Content="{StaticResource IconConvert}"/>
+
+        <!-- Word-style flyout: drops directly under the button, closes on outside click. -->
+        <Popup x:Name="PART_Popup"
+               PlacementTarget="{Binding ElementName=PART_Toggle}"
+               Placement="Bottom"
+               VerticalOffset="2"
+               HorizontalOffset="0"
+               StaysOpen="False"
+               AllowsTransparency="True"
+               PopupAnimation="Fade"
+               IsOpen="{Binding IsChecked, ElementName=PART_Toggle, Mode=TwoWay}"
+               Closed="OnPopupClosed">
+            <Border Background="{StaticResource FlyoutBrush}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="2"
+                    MinWidth="180"
+                    Padding="0,6">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.5" Color="Black"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="CONVERT"
+                               Style="{StaticResource SectionHeader}"
+                               Margin="10,0,10,4"/>
+                    <Border Style="{StaticResource SectionRule}" Margin="10,0,10,4"/>
+
+                    <Button Style="{StaticResource FlyoutItem}" Content="...to BIM"
+                            Command="{Binding ToBimCommand, ElementName=Root}"
+                            Click="OnItemClick"/>
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

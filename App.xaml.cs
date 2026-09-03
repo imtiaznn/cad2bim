@@ -18,8 +18,15 @@ namespace Cad2Bim {
                 return;
             }
 
+            // "--convert <file> [out.ifc]": classify with defaults and export a BIM model without
+            // the GUI — the same pipeline the Convert button runs, measurable from a script.
+            if (e.Args.Length >= 2 && e.Args[0] == "--convert") {
+                RunConvert(e.Args[1], e.Args.Length >= 3 ? e.Args[2] : null);
+                return;
+            }
+
             var service = new ClassificationService();
-            var viewModel = new MainViewModel(service, PickFile);
+            var viewModel = new MainViewModel(service, PickFile, PickSavePath);
             var window = new MainWindow { DataContext = viewModel };
             window.Show();
 
@@ -45,9 +52,33 @@ namespace Cad2Bim {
             Environment.Exit(0);
         }
 
+        private void RunConvert(string filePath, string? outputPath) {
+            string report;
+            try {
+                report = Bim.ConvertPipeline.RunHeadless(filePath, outputPath,
+                                                         Bim.BimConversionOptions.Default);
+            }
+            catch (Exception ex) {
+                report = $"Failed to convert '{filePath}': {ex}";
+            }
+
+            File.WriteAllText(Path.ChangeExtension(outputPath ?? filePath, ".convert.txt"), report);
+            Environment.Exit(0);
+        }
+
         private static string? PickFile() {
             var dialog = new OpenFileDialog {
                 Filter = "CAD files (*.dwg;*.dxf)|*.dwg;*.dxf|All files (*.*)|*.*"
+            };
+            return dialog.ShowDialog() == true ? dialog.FileName : null;
+        }
+
+        private static string? PickSavePath(string suggestedName) {
+            var dialog = new SaveFileDialog {
+                Filter = "IFC files (*.ifc)|*.ifc|All files (*.*)|*.*",
+                DefaultExt = ".ifc",
+                AddExtension = true,
+                FileName = suggestedName
             };
             return dialog.ShowDialog() == true ? dialog.FileName : null;
         }

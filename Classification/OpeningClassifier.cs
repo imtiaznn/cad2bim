@@ -22,8 +22,14 @@ namespace Cad2Bim.Classification {
         public static List<Opening> Classify(IReadOnlyList<Wall> walls,
                                              IReadOnlyList<GeometryElement> geometry,
                                              ClassificationTolerances tolerances,
+                                             ClassificationReport? report = null) =>
+            Classify(WallRun.Build(walls, tolerances), geometry, tolerances, report);
+
+        /// <summary>Overload for callers that already hold the runs and want to keep them.</summary>
+        public static List<Opening> Classify(IReadOnlyList<WallRun> runs,
+                                             IReadOnlyList<GeometryElement> geometry,
+                                             ClassificationTolerances tolerances,
                                              ClassificationReport? report = null) {
-            List<WallRun> runs = WallRun.Build(walls, tolerances);
             List<Segment> segments = geometry.OfType<Segment>().ToList();
 
             // Only arcs that could be a door leaf's sweep are worth carrying. This is where a

@@ -71,6 +71,21 @@
         </Canvas>
     </Viewbox>
 
+    <!-- Flat plan becoming a solid: an isometric cube with an arrow feeding into it. -->
+    <Viewbox x:Key="IconConvert" x:Shared="False" Width="22" Height="22">
+        <Canvas Width="24" Height="24">
+            <Path Data="M14,5 L21.5,9 L21.5,17 L14,21 L6.5,17 L6.5,9 Z"
+                  Stroke="{StaticResource TextBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round" Fill="Transparent"/>
+            <Path Data="M6.5,9 L14,13 L21.5,9 M14,13 L14,21"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeLineJoin="Round"/>
+            <Path Data="M1.5,5 L8,5 M5.5,2.5 L8,5 L5.5,7.5"
+                  Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+        </Canvas>
+    </Viewbox>
+
     <!-- Sheet with a folded corner. -->
     <Viewbox x:Key="IconFile" x:Shared="False" Width="22" Height="22">
         <Canvas Width="24" Height="24">

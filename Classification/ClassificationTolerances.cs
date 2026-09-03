@@ -20,6 +20,8 @@ namespace Cad2Bim.Classification {
         double MinSwingRadius,
         double MaxSwingRadius,
         double MinFaceLength,
+        double MinColumnSide,
+        double MaxColumnSide,
         // --- angles and ratios, unit-free (not converted) --------------------------------------
         double AngleToleranceDegrees,
         double MinSwingSweepDegrees,
@@ -46,6 +48,10 @@ namespace Cad2Bim.Classification {
             MinSwingRadius: 500,
             MaxSwingRadius: 1500,
             MinFaceLength: 200,
+            // A closed rectangle in the wall tags reads as a structural column when both sides
+            // fall in this range: below it lie wall-end caps and jamb blocks, above it rooms.
+            MinColumnSide: 150,
+            MaxColumnSide: 800,
             AngleToleranceDegrees: 2,
             // Real swings measure 83-94 degrees, so 90 +/- 10 already clips the low end.
             MinSwingSweepDegrees: 60,
@@ -69,7 +75,9 @@ namespace Cad2Bim.Classification {
                 HingeTolerance = Scale(HingeTolerance),
                 MinSwingRadius = Scale(MinSwingRadius),
                 MaxSwingRadius = Scale(MaxSwingRadius),
-                MinFaceLength = Scale(MinFaceLength)
+                MinFaceLength = Scale(MinFaceLength),
+                MinColumnSide = Scale(MinColumnSide),
+                MaxColumnSide = Scale(MaxColumnSide)
             };
         }
     }

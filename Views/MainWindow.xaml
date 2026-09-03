@@ -23,6 +23,8 @@
                 <controls:SegmentButton DockPanel.Dock="Left" Margin="8,0,0,0" VerticalAlignment="Center"
                                         AutomaticCommand="{Binding ShowAutomaticPanelCommand}"
                                         ManualCommand="{Binding ShowManualPanelCommand}"/>
+                <controls:ConvertButton DockPanel.Dock="Left" Margin="8,0,0,0" VerticalAlignment="Center"
+                                        ToBimCommand="{Binding ShowConvertPanelCommand}"/>
                 <controls:LayersButton ItemsSource="{Binding Layers}" DockPanel.Dock="Right"
                                        VerticalAlignment="Center" Margin="8,0,0,0"/>
             </DockPanel>
@@ -53,6 +55,18 @@
                 </Style>
             </controls:ManualPanel.Style>
         </controls:ManualPanel>
+        <controls:ConvertPanel DockPanel.Dock="Right">
+            <controls:ConvertPanel.Style>
+                <Style TargetType="controls:ConvertPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ActivePanel}" Value="{x:Static vm:SegmentPanel.Convert}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </controls:ConvertPanel.Style>
+        </controls:ConvertPanel>
 
         <!-- Center: CAD viewport -->
         <rendering:CadViewport Model="{Binding Model}"

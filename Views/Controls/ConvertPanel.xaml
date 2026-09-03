@@ -1,0 +1,53 @@
+<UserControl x:Class="Cad2Bim.Views.Controls.ConvertPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Cad2Bim.Views.Controls"
+             Width="270">
+    <Border Background="{StaticResource PanelBrush}"
+            BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1,0,0,0">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <DockPanel LastChildFill="False" Margin="0,0,0,4">
+                    <TextBlock Text="Convert to BIM" FontWeight="Bold"
+                               Foreground="{StaticResource TextBrush}"
+                               DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                    <Button Style="{StaticResource PanelCloseButton}"
+                            Command="{Binding ClosePanelCommand}"
+                            ToolTip="Close panel (Esc)"
+                            DockPanel.Dock="Right" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBlock Text="Rebuilds classified walls, doors and windows as a 3D model and writes an IFC file Revit can open or link. Run Segment first."
+                           Foreground="{StaticResource TextDimBrush}"
+                           FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"/>
+
+                <TextBlock Text="HEIGHTS (mm)" Style="{StaticResource SectionHeader}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+                <TextBlock Text="The drawing is flat; these give the model its third dimension."
+                           Foreground="{StaticResource TextDimBrush}"
+                           FontSize="11" Margin="0,0,0,4" TextWrapping="Wrap"/>
+
+                <controls:NumericScrubBox Minimum="100" Maximum="6000" Step="10" Format="0"
+                                          Label="Wall height"
+                                          Value="{Binding ConvertSettings.WallHeight}"/>
+                <controls:NumericScrubBox Minimum="100" Maximum="6000" Step="10" Format="0"
+                                          Label="Door height"
+                                          Value="{Binding ConvertSettings.DoorHeight}"/>
+                <controls:NumericScrubBox Minimum="0" Maximum="6000" Step="10" Format="0"
+                                          Label="Window sill"
+                                          Value="{Binding ConvertSettings.WindowSill}"/>
+                <controls:NumericScrubBox Minimum="100" Maximum="6000" Step="10" Format="0"
+                                          Label="Window head"
+                                          Value="{Binding ConvertSettings.WindowHead}"/>
+            </StackPanel>
+
+            <Button Grid.Row="1" Style="{StaticResource PanelButton}" Content="Convert"
+                    Command="{Binding ConvertToBimCommand}"
+                    HorizontalAlignment="Stretch" Margin="0,14,0,0"/>
+        </Grid>
+    </Border>
+</UserControl>
